@@ -17,9 +17,12 @@ git push -u origin <user>-dev # только при первом запуске
 git push # при последующих запусках
 ```
 
-#### Слияние веток (локально)
+#### Слияние веток (из `master`)
 
-@TODO
+```
+git checkout <user>-dev
+git merge master
+```
 
 #### Pull request
 
