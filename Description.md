@@ -17,7 +17,7 @@
 После того, как `agent` выполнил задачу, он подключается к `controller`'у и передаёт результаты выполнения задачи.
 
 Требования к `controller`:
-- Python 3.7
+- Python 3.6
 
 Состав `controller-app`:
 - `arpcp client`
