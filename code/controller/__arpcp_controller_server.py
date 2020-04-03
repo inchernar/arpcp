@@ -1,71 +1,136 @@
-import socket
-import sys, os
 import threading
-# sys.path.append(os.path.abspath(os.path.join('..', 'arpcp')))
-# from arpcp import Arpcp
+import sys, os
+sys.path.append(os.path.abspath(os.path.join('..', 'arpcp')))
+from __arpcp import Arpcp
+import threading
+
+BASE_ADDRESS = ('0.0.0.0', 65431,)
+WORKERS_COUNT = 5
+QUEUE_SIZE = 1
+DEBUG = True
+
+def debug_print(string):
+	if DEBUG:
+		print("[DEBUG] " + string)
+
+class Workers:
+	def __init__(self, count):
+		debug_print('Workers.__init__()')
+		self.count = count
+		self.workers = []
+
+	def create(self, target, sock):
+		debug_print('Workers.create()')
+		for i in range(self.count):
+			worker = threading.Thread(target=target, args=(sock,))
+			worker.name = "Worker " + str(i)
+			worker.daemon = True
+			self.workers.append(worker)
+
+	def start(self):
+		debug_print('Workers.start()')
+		for worker in self.workers:
+			debug_print("worker '" + worker.name + "' starts")
+			worker.start()
+
+	def join(self):
+		debug_print('Workers.join()')
+		for worker in self.workers:
+			worker.join()
+
+class Arpcp_agent_server:
+    def __init__(self, host = 'localhost', port = 65431, server_name = 'myServer'):
+        debug_print('Arpcp_agent_server.__init__()')
+        self._host = host
+        self._port = port
+        self._server_name = server_name
+
+    def start(self):
+        debug_print('Arpcp_agent_server.start()')
+        arpcp_socket = Arpcp.create_socket()
+        debug_print('socket object created')
+        try:
+            arpcp_socket.bind((self._host, self._port))
+            debug_print('socket object binded to {}:{}'.format(str(self._host), str(self._port)))
+
+            arpcp_socket.listen(QUEUE_SIZE)
+            debug_print('socket object listen connections. QUEUE_SIZE = {}'.format(str(QUEUE_SIZE)))
+
+            workers = Workers(WORKERS_COUNT)
+            workers.create(self.worker_serves, arpcp_socket)
+            workers.start()
+            debug_print('main thread join threads')
+            workers.join()
+        finally:
+            arpcp_socket.close()
+
+    def worker_serves(self, arpcp_socket):
+        debug_print('start serving')
+        while True:
+            conn, client_address = arpcp_socket.accept() # Соединение с клиентом
+            debug_print('connection accepted')
+
+            write_socketfile, read_socketfile = Arpcp.make_socket_files(conn, buffering = None)
+            debug_print('socket file created')
+
+            try:
+                self.serve_client(conn, client_address, write_socketfile, read_socketfile)
+            except Exception as e:
+                print('Client serving failed', e)
+
+    def serve_client(self, conn, client_address, write_socketfile, read_socketfile):
+        try:
+            arpcp_dict_message = self.read_message(read_socketfile)
+            debug_print('message readed')
+
+            read_socketfile.close()
+            debug_print('read_socket closed')
+
+            print("=====CONNECTION=======================================")
+            print("Client: " + str(client_address[0]) + ":" + str(client_address[1]))
+            print("Data:\r\n" + str(arpcp_dict_message))
+            print("======================================================")
+            print()
+
+            self.send_message(write_socketfile, {"task":"200"})
+            write_socketfile.close()
+
+        except ConnectionResetError:
+            conn = None
+        # except Exception as e:
+            # self.send_error(conn, e)
+        if conn:
+            conn.close()
+
+    def create_async_task(self, starting_line, headers):
+        # Здесь нужно будет связать с БД и сохранить там данные об этой нерешенной задаче.
+        return 1
+
+    def send_response(self, conn, result_of_task):
+        # Здесь нужно отправить ответ о выполненной синхронной задаче
+        return 1
+
+    # err = result_of_task
+    def send_error(self, conn, err):
+        # Здесь нужно отправить ответ с информацией об ошибке синхронной задачи
+        return 1
+
+    def read_message(self, read_socketfile):
+        return Arpcp.read_request(read_socketfile)
+
+    def send_message(self, write_socketfile, message):
+        Arpcp.send_message(write_socketfile, message)
 
 
-# class Arpcp_controller_server:
-#     def __init__(self, host = 'localhost', port = 65431, server_name = 'myServer'):
-#         self._host = host
-#         self._port = port
-#         self._server_name = server_name
-    
-#     def serve_forever(self):
-#         serv_sock = socket.socket(
-#             socket.AF_INET,
-#             socket.SOCK_STREAM,
-#             proto=0
-#         )
+def main():
+    server = Arpcp_agent_server()
+    debug_print('server created')
+    server.start()
 
-#         try:
-#             serv_sock.bind((self._host, self._port)) # привязать хост+порт
-#             serv_sock.listen(2) # очередь из n людей
-
-#             while True:
-#                 conn, addr_conn = serv_sock.accept()
-#                 socketfile = conn.makefile("rwb", buffering=0)
-#                 try:
-#                     self.serve_client(conn, socketfile)
-#                 except Exception as e:
-#                     print('Client serving failed', e)
-#         finally:
-#             serv_sock.close()
-
-#     def serve_client(self, conn, socketfile):
-#         try:
-#             starting_line, headers, body = Arpcp.parse_request(conn, socketfile) 
-#             print(starting_line) # Вывод!
-#             print(headers)
-#             print(body)
-#             purpose_word, p_version = Arpcp.split_starting_line(starting_line)
-#             if purpose_word == 'GET':
-#                 pass
-#             elif purpose_word == 'EVENT':
-#                 pass
-#         except ConnectionResetError:
-#             conn = None
-#         except Exception as e:
-#             self.send_error(conn, e)
-#         if conn:
-#             conn.close()
-
-#     def handle_request(self, req):
-#         return 1
-
-#     def send_response(self, conn, resp):
-#         return 1
-
-#     def send_error(self, conn, err):
-#         return 1
-
-
-# class Request:
-#   def __init__(self, method, target, version):
-#     self.method = method
-#     self.target = target
-#     self.version = version
-
-
-# server = Arpcp_controller_server()
-# server.serve_forever()
+if __name__ == '__main__':
+	try:
+		debug_print('app starting')
+		main()
+	except KeyboardInterrupt:
+		debug_print('app stoping')
+		exit(1)

@@ -19,25 +19,30 @@ class Arpcp_controller_client(object):
             client_sock.connect(ADDR)
         except Exception as e:
             print('Server connection failed', e)
-        socketfile = client_sock.makefile("rwb", buffering=0)
-        self.send_message(socketfile, message)
-        # line = socketfile.readline()
-        # print('Я тут')
-        # print(line.decode('UTF-8').replace('\n',''))
-        socketfile.close()
+        write_socketfile, read_socketfile = Arpcp.make_socket_files(client_sock, buffering=None)
+        self.send_message(write_socketfile, Arpcp.input_string_to_arpcp_format(input()))
+        write_socketfile.write('ping\r\n'.encode('UTF-8'))
+        write_socketfile.close()
+        response = self.read_message(read_socketfile)
+        print(response)
+        read_socketfile.close()
 
+    def read_message(self, read_socketfile):
+        return Arpcp.read_request(read_socketfile)
 
-    def send_message(self, socketfile, message):
-        socketfile.write(message.encode('UTF-8'))
+    def send_message(self, write_socketfile, message):
+        Arpcp.send_message(write_socketfile, message)
 
 client = Arpcp_controller_client()
-# client.send_message_to_agent( message = '''TASK ARPCP/0.1
-# remote-func my_func
-# remote-func-arg 0 1
-# something else
-# remote-func-arg 1 key
-# remote-func-arg 2 args
-# ''')
 
-if __name__ == "__main__":
-    client.send_message_to_agent(Arpcp.send_message(Arpcp.input_string_to_arpcp_format(input())))
+client.send_message_to_agent( message = '''TASK ARPCP/0.1
+remote-func my_func
+remote-func-arg 0 1
+something else
+remote-func-arg 1 key
+remote-func-arg 2 args
+''')
+
+input()
+# if __name__ == "__main__":
+#     client.send_message_to_agent(Arpcp.send_message(Arpcp.input_string_to_arpcp_format(input())))
