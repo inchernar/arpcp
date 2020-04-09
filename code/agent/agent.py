@@ -3,16 +3,22 @@ import sys
 import time
 import yaml
 import threading
+
 sys.path.append(os.path.abspath(os.path.join('..', 'arpcp')))
 from __arpcp import Arpcp
+
 import setproctitle
 import threading as th
 import multiprocessing as mp
+import redis
+from uuid import getnode as get_mac
 
-BASE_ADDRESS = ('0.0.0.0', 65431,)
+
+BASE_ADDRESS = ('127.0.0.1', 51099)
 WORKERS_COUNT = 5
 QUEUE_SIZE = 1
 LOG = True
+REDIS_CLIENT = redis.Redis(host = '127.0.0.1', port = 6379)
 
 def log_print(string):
 	if LOG:
@@ -49,7 +55,7 @@ class Workers:
 			worker.join()
 
 class Arpcp_agent_server:
-	def __init__(self, host = 'localhost', port = 65431, server_name = 'myServer'):
+	def __init__(self, host = 'localhost', port = 51099, server_name = 'myServer'):
 		log_print('Arpcp_agent_server.__init__()')
 		self._host = host
 		self._port = port
@@ -84,47 +90,57 @@ class Arpcp_agent_server:
 			log_print('socket file created')
 
 			try:
-				self.serve_client(conn, client_address, write_socketfile, read_socketfile)
+				arpcp_dict_message = self.read_message(read_socketfile)
+				log_print('message readed')
+		
+				read_socketfile.close()
+				log_print('read_socket closed')
+
+				print()
+				print("=====CONNECTION=======================================")
+				print("Client: " + str(client_address[0]) + ":" + str(client_address[1]))
+				print("Data:\r\n" + str(arpcp_dict_message))
+				print("======================================================")
+				print()
+
+				log_print(arpcp_dict_message['purpose_word'])
+				if arpcp_dict_message['purpose_word'] == 'TASK':
+					self.task_request(arpcp_dict_message, write_socketfile)
+				elif arpcp_dict_message['purpose_word'] == 'ATASK':
+					self.atask_request(arpcp_dict_message, write_socketfile)
+				elif arpcp_dict_message['purpose_word'] == 'GET':
+					self.get_request(arpcp_dict_message, write_socketfile)
+				elif arpcp_dict_message['purpose_word'] == 'ECHO':
+					self.echo_request(arpcp_dict_message, write_socketfile)
+				else:
+					self.send_message(write_socketfile, {"code": "301", "describe": "uncorrect purpose word"})
+
+				write_socketfile.close()
+
+
 			except Exception as e:
 				print('Client serving failed', e)
 
-	def serve_client(self, conn, client_address, write_socketfile, read_socketfile):
-		try:
-			arpcp_dict_message = self.read_message(read_socketfile)
-			log_print('message readed')
-			
-			read_socketfile.close()
-			log_print('read_socket closed')
+	def task_request(self, arpcp_dict_message, write_socketfile):
+		pass
 
-			print()
-			print("=====CONNECTION=======================================")
-			print("Client: " + str(client_address[0]) + ":" + str(client_address[1]))
-			print("Data:\r\n" + str(arpcp_dict_message))
-			print("======================================================")
-			print()
-			time.sleep(10)
-			self.send_message(write_socketfile, {"task":"200"})
-			write_socketfile.close()
+	def atask_request(self, arpcp_dict_message, write_socketfile):
+		self.add_to_redis(arpcp_dict_message)
+		self.send_message(write_socketfile, {"code":"200"})
 
-		except ConnectionResetError:
-			conn = None
-		# except Exception as e:
-			# self.send_error(conn, e)
-		if conn:
-			conn.close()
+	def get_request(self, arpcp_dict_message, write_socketfile):
+		pass
 
-	def create_async_task(self, starting_line, headers):
-		# Здесь нужно будет связать с БД и сохранить там данные об этой нерешенной задаче.
-		return 1
+	def echo_request(self, arpcp_dict_message, write_socketfile):
+		self.send_message(write_socketfile, {'mac_addr': get_mac()})
 
-	def send_response(self, conn, result_of_task):
-		# Здесь нужно отправить ответ о выполненной синхронной задаче
-		return 1
 
-	# err = result_of_task
-	def send_error(self, conn, err):
-		# Здесь нужно отправить ответ с информацией об ошибке синхронной задачи
-		return 1
+	def add_to_redis(self, message):
+		key_time = str(time.time())
+		REDIS_CLIENT[key_time] = str(message).encode('UTF-8')
+
+	def	get_from_redis(self, id):
+		pass
 
 	def read_message(self, read_socketfile):
 		return Arpcp.read_request(read_socketfile)
@@ -134,7 +150,7 @@ class Arpcp_agent_server:
 
 
 def main():
-	server = Arpcp_agent_server()
+	server = Arpcp_agent_server(BASE_ADDRESS[0], BASE_ADDRESS[1])
 	log_print('server created')
 	server.start()
 

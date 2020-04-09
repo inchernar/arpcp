@@ -50,7 +50,10 @@ class Arpcp:
                 arpcp_dict_message['remote-func-arg'] = {}
             for i in list(range(2, len(input_string))):
                 arpcp_dict_message['remote-func-arg'][str(i-2)] = input_string[i]
-        
+        elif purpose_word == 'ECHO':
+            arpcp_dict_message['purpose_word'] = purpose_word
+            arpcp_dict_message['p_version'] = cls.__p_version
+            
         return arpcp_dict_message
 
     @classmethod
