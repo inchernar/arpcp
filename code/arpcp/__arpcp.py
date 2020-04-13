@@ -14,14 +14,15 @@ class Arpcp:
         }
 
     @classmethod
-    def create_socket(cls):
+    def create_socket(cls, side = 'server'):
         try:
             arpcp_socket = socket.socket(
                 socket.AF_INET,
                 socket.SOCK_STREAM,
                 # proto=0
             )
-            arpcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if side == 'server':
+                arpcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             return arpcp_socket
         except socket.error:
             print('Failed to create socket')
