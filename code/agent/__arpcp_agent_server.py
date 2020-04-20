@@ -8,6 +8,7 @@ import setproctitle
 import threading as th
 import multiprocessing as mp
 import redis
+import socket
 
 sys.path.append(os.path.abspath(os.path.join('..', 'arpcp')))
 from __arpcp import Arpcp
@@ -19,9 +20,12 @@ from procedures import *
 LOG = True
 REDIS_CLIENT = redis.Redis(host = '127.0.0.1', port = 6379)
 
-def log_print(string):
-    if LOG:
-        print("[LOG] " + string)
+def log_print(string = None):
+    try:
+        if LOG:
+            print("[LOG] " + string)
+    except:
+        print('!!!Uncorrect logging!!!')
         
 class ConfigReader:
     def __init__(self, config_file):
@@ -59,7 +63,7 @@ class Arpcp_agent_server:
         host = 'localhost',
         port = 51099,
         connection_queue_size=1,
-        workers_count=2,
+        workers_count=1,
         procname_prefix='ARPCP',
         server_procname = 'Server',
         worker_procname='worker',
@@ -78,11 +82,13 @@ class Arpcp_agent_server:
 
     def start(self):
         log_print('ARPCPServer starting')
-        server_procname = \
-            self.procname_prefix + ':' + \
-            self.server_procname
-        setproctitle.setproctitle(server_procname)
-
+        try:
+            server_procname = \
+                self.procname_prefix + ':' + \
+                self.server_procname
+            setproctitle.setproctitle(server_procname)
+        except:
+            log_print("Warning! Can't change main process name")
         
         arpcp_socket = Arpcp.create_socket()
         log_print('socket object created')
@@ -97,6 +103,7 @@ class Arpcp_agent_server:
             arpcp_socket.close()
 
     def load_modules(self):
+        # Сделать проверку на наличие модулей
         log_print('preparing modules with procedures')
         modules = []
         for module in procedures.__all__:
@@ -108,56 +115,79 @@ class Arpcp_agent_server:
         log_print('TCP socket preparing')
         arpcp_socket.bind((self.host, self.port,))
         arpcp_socket.listen(self.connection_queue_size)
+        arpcp_socket.setblocking(False)
         log_print('TCP socket prepared. Binded to {}:{}'.format(str(self.host), str(self.port)))
 
     def worker_serves(self, arpcp_socket):
-        worker_procname = \
-            self.procname_prefix + ':' + \
-            self.server_procname + ':' + \
-            self.worker_procname + '[' + str(mp.current_process().pid) + ']'
-        setproctitle.setproctitle(worker_procname)
+        try:
+            worker_procname = \
+                self.procname_prefix + ':' + \
+                self.server_procname + ':' + \
+                self.worker_procname + '[' + str(mp.current_process().pid) + ']'
+            setproctitle.setproctitle(worker_procname)
+        except:
+            log_print("Warning! Can't change worker thread name")
+
         log_print('start serving')
         while True:
-            conn, client_address = arpcp_socket.accept() # Соединение с клиентом
-            log_print('connection accepted')
-
-            write_socketfile, read_socketfile = Arpcp.make_socket_files(conn, buffering = None)
-            log_print('socket file created')
-
             try:
-                arpcp_dict_message = self.read_message(read_socketfile)
-                log_print('message readed')
-        
-                read_socketfile.close()
-                log_print('read_socket closed')
+                conn, client_address = arpcp_socket.accept() # Соединение с клиентом
+                log_print('connection accepted')
 
-                print()
-                print("=====CONNECTION=======================================")
-                print("Client: " + str(client_address[0]) + ":" + str(client_address[1]))
-                print("Data:\r\n" + str(arpcp_dict_message))
-                print("======================================================")
-                print()
+                write_socketfile, read_socketfile = Arpcp.make_socket_files(conn, buffering = None)
+                log_print('socket file created')
 
-                if arpcp_dict_message['purpose_word'] == 'TASK':
-                    log_print('TASK request')
-                    self.task_request(arpcp_dict_message, write_socketfile)
-                elif arpcp_dict_message['purpose_word'] == 'ATASK':
-                    log_print('ATASK request')
-                    self.atask_request(arpcp_dict_message, write_socketfile)
-                elif arpcp_dict_message['purpose_word'] == 'GET':
-                    log_print('GET request')
-                    self.get_request(arpcp_dict_message, write_socketfile)
-                elif arpcp_dict_message['purpose_word'] == 'ECHO':
-                    log_print('ECHO request')
-                    self.echo_request(arpcp_dict_message, write_socketfile)
+            except socket.error:
+                print('No clients')
+            except KeyboardInterrupt:
+                arpcp_socket.close()
+                break 
+            else:
+                log_print('waiting for message')
+                try:
+                    # timer = threading.Timer(10.0, log_print)
+                    # timer.start()
+                    conn.settimeout(4.0)
+                    arpcp_dict_message = self.read_message(read_socketfile)
+                    # timer.cancel()
+                except Exception as e:
+                    log_print('time out')
+                    read_socketfile.close()
+                    self.send_message(write_socketfile, {'code': '400'})
+                    write_socketfile.close()
                 else:
-                    self.send_message(write_socketfile, {"code": "301", "describe": "uncorrect purpose word"})
+                    log_print('message readed')
+            
+                    read_socketfile.close()
+                    log_print('read_socket closed')
 
-                write_socketfile.close()
+                    print()
+                    print("=====CONNECTION=======================================")
+                    print("Client: " + str(client_address[0]) + ":" + str(client_address[1]))
+                    print("Data:\r\n" + str(arpcp_dict_message))
+                    print("======================================================")
+                    print()
+
+                    if arpcp_dict_message['purpose_word'] == 'TASK':
+                        log_print('TASK request')
+                        self.task_request(arpcp_dict_message, write_socketfile)
+                    elif arpcp_dict_message['purpose_word'] == 'ATASK':
+                        log_print('ATASK request')
+                        self.atask_request(arpcp_dict_message, write_socketfile)
+                    elif arpcp_dict_message['purpose_word'] == 'GET':
+                        log_print('GET request')
+                        self.get_request(arpcp_dict_message, write_socketfile)
+                    elif arpcp_dict_message['purpose_word'] == 'ECHO':
+                        log_print('ECHO request')
+                        self.echo_request(arpcp_dict_message, write_socketfile)
+                    else:
+                        self.send_message(write_socketfile, {"code": "301", "describe": "uncorrect purpose word"})
+
+                    write_socketfile.close()
 
 
-            except Exception as e:
-                print('Client serving failed', e)
+            # except Exception as e:
+            #     print('Client serving failed', e)
 
 # --------------------------------------------------------------------------------
     def task_request(self, arpcp_dict_message, write_socketfile):
@@ -209,6 +239,16 @@ class Arpcp_agent_server:
         Arpcp.send_message(write_socketfile, message)
         log_print('sended to client:')
         print(message)
+
+
+    # def do_echo(self, arpcp_socket):
+    #     cmd_out = os.popen("arp -a").read()
+    #     line_arr = cmd_out.split('\n')
+
+    #     # print(cmd_out)
+
+    #     ip_adresses = [i.split()[0] for i in line_arr[3:] if len(i) > 0]
+    #     print(ip_adresses)
 
 
 

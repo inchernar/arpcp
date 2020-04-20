@@ -33,6 +33,7 @@ class Arpcp_controller_client(object):
             message = Arpcp.input_string_to_arpcp_format(message)
         except:
             pass
+        input('ENTER WAIT')
         log_print('sending message..')
         self.send_message(write_socketfile, message)
         log_print('message sended')
