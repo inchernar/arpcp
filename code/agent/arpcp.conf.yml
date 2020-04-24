@@ -1,8 +1,0 @@
-server:
-  host: '0.0.0.0'
-  port: 51099
-  connection_queue_size: 2
-  workers_count: 1
-  procname_prefix: 'ARPCP'
-  server_procname: 'superserver'
-  worker_procname: 'worker'
