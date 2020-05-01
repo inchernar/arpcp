@@ -40,30 +40,26 @@
 
 Структура протокола сделана по аналогии с json
 
-`Ключевое слово (purpose_word)` - (ATASK, TASK, GET, ECHO, SIGNAL)
+`Ключевое слово (purpose_word)` - (ATASK, TASK, GET, ID, SIGNAL)
 
-`Версия arpcp (p_version)` - (ARPCP/1.0)
+`Версия arpcp (p_version)` - (1.0)
 
 ```json
 request
 {
-    "purpose_word": "<purpose_word>",
-    "p_version": "ARPCP/<p_version>",  
-    "remote-func": "<remote-func>",
-    "task-id": "<task-id>",
-    "task-status": "<task-status>",
-    "remote-func-arg" : {
-        "0": "<arg1>", 
-        "1": "<arg2>",
-        ...
-        "<i>": "<arg<i>>"
-        }
+    "method": "<purpose_word>",
+    "version": "<p_version>",  
+    "remote_procedure": "<remote-func>",
+    "atask_id": "<atask_id>",
+    "atask_status": "<atask_status>",
+    "remote_procedure_args" : ["<arg1>","<arg2>",...]
 }
 
 response
 {
     "code": "<code>",
-    "result": "<result>"
+    "description": "<result>",
+    "data": "<data>"
 }
 ```
 Плюс (+) рядом с кодом значит он реализован и используется
@@ -94,23 +90,21 @@ request
 
 ```json
 {
-    "purpose_word": "ATASK",
-    "p_version": "ARPCP/1.0",  
-    "remote-func": "<remote-func>",
-    "remote-func-arg" : {
-        "0": "<arg1>", 
-        "1": "<arg2>",
-        ...
-        "<i>": "<arg<i>>"
-        }
+    "method": "ATASK",
+    "version": "<p_version>",  
+    "remote_procedure": "<remote-func>",
+    "remote_procedure_args" : ["<arg1>","<arg2>",...]
 }
 ```
 
 response
 
-```
-code <code>
-task-id <task_id>
+```json
+{
+    "code": "<code>",
+    "description": "<result>",
+    "data": "<data>"
+}
 ```
 
 ## SIGNAL
@@ -119,18 +113,22 @@ request
 
 ```json
 {
-    "purpose_word": "SIGNAL",
-    "p_version": "ARPCP/1.0",  
-    "task-id": "<task-id>",
-    "task-status": "<task-status>",
+    
+    "method": "SIGNAL",
+    "version": "<p_version>",  
+    "atask_id": "<atask_id>",
+    "atask_status": "<atask_status>",
 }
 ```
 
 response
 
-```
-code <code>
-???
+```json
+{
+    "code": "<code>",
+    "description": "<result>",
+    "data": "<data>"
+}
 ```
 
 ## GET
@@ -139,17 +137,20 @@ request
 
 ```json
 {
-    "purpose_word": "GET",
-    "p_version": "ARPCP/<p_version>",  
-    "task-id": "<task-id>",
+    "method": "GET",
+    "version": "ARPCP/<p_version>",  
+    "atask_id": "<task-id>",
 }
 ```
 
 response
 
-```
-code <code>
-result <result>
+```json
+{
+    "code": "<code>",
+    "description": "<result>",
+    "data": "<data>"
+}
 ```
 
 
@@ -159,42 +160,40 @@ request
 
 ```json
 {
-    "purpose_word": "TASK",
-    "p_version": "ARPCP/<p_version>",  
-    "remote-func": "<remote-func>",
-    "remote-func-arg" : {
-        "0": "<arg1>", 
-        "1": "<arg2>",
-        ...
-        "<i>": "<arg<i>>"
-        }
+    "method": "TASK",
+    "version": "<p_version>",  
+    "remote_procedure": "<remote-func>",
+    "remote_procedure_args" : ["<arg1>","<arg2>",...]
 }
 ```
 
 response
 
-```
-code <code>
-result <result>
+```json
+{
+    "code": "<code>",
+    "description": "<result>",
+    "data": "<data>"
+}
 ```
 
-## Sync Task
+## Id
 
 request
 
 ```json
 {
-    "purpose_word": "ECHO",
-    "p_version": "ARPCP/<p_version>",  
-    ...
-    maybe mac_addr
+    "method": "id",
+    "version": "<p_version>",  
 }
 ```
 
 response
 
-```
-code <code>
-pong
-mac_addr ???
+```json
+{
+    "code": "<code>",
+    "description": "<result>",
+    "data": "<data>"
+}
 ```
