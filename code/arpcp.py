@@ -81,7 +81,7 @@ class ARPCPException(Exception):
 		self.errmsg = errmsg
 
 	@staticmethod
-	def handle_bad_request_exception(sock, e):
+	def handle_exception_while_connection(sock, e):
 		if type(e) is ARPCPException:
 			log_print(extent=20, message='handle ARPCPException')
 			error_print(str(e))
@@ -219,7 +219,7 @@ class ARPCP:
 			getattr(ARPCP, f'handle_{request["method"]}')(sock, addr, request)
 			log_print(extent=20, message='request handled')
 		except Exception as e:
-			ARPCPException.handle_bad_request_exception(sock ,e)
+			ARPCPException.handle_exception_while_connection(sock ,e)
 
 	@staticmethod
 	def handle_procedures(sock, addr, message):
@@ -251,13 +251,13 @@ class ARPCP:
 			if message['atask_status'] == 'done':
 				get_message = {'atask_id': message['atask_id']}
 				response_message = ARPCP.call('192.168.1.5', 7018, 'get', get_message)
-				
+
 			else:
 				pass
 
 			log_print(extent=20, message='handle_signal done')
 		except Exception as e:
-			ARPCPException.handle_bad_request_exception(sock, e)
+			ARPCPException.handle_exception_while_connection(sock, e)
 
 	@staticmethod
 	def handle_get(sock, addr, message):
@@ -268,12 +268,12 @@ class ARPCP:
 			ARPCP.send_message(sock, response, ARPCP.MT_RES)
 			traffic_print(response, ARPCP.MT_RES)
 			ARPCP.close(sock)
-			
+
 
 
 			log_print(extent=20, message='handle_get done')
 		except Exception as e:
-			ARPCPException.handle_bad_request_exception(sock, e)
+			ARPCPException.handle_exception_while_connection(sock, e)
 
 
 	@staticmethod
@@ -295,7 +295,7 @@ class ARPCP:
 			ARPCP.close(sock)
 			log_print(extent=20, message='handle_task done')
 		except Exception as e:
-			ARPCPException.handle_bad_request_exception(sock, e)
+			ARPCPException.handle_exception_while_connection(sock, e)
 
 
 	@staticmethod
@@ -323,7 +323,7 @@ class ARPCP:
 			traffic_print(response, ARPCP.MT_RES)
 			ARPCP.close(sock)
 		except Exception as e:
-			ARPCPException.handle_bad_request_exception(sock, e)
+			ARPCPException.handle_exception_while_connection(sock, e)
 
 		try:
 			log_print(extent=20, message='procedures reloading...', end='')
@@ -333,12 +333,12 @@ class ARPCP:
 				log_print(extent=20,message='procedure calling..')
 				remote_procedure_result = getattr(procedures, message['remote_procedure'])(*message['remote_procedure_args'])
 				log_print(extent=20, message='procedure finished')
-			except AttributeError:
-				# Неверное имя метода
-				pass
-			except TypeError:
-				# Неверное количество или тип аргумента
-				pass
+			# except AttributeError:
+			# 	# Неверное имя метода
+			# 	pass
+			# except TypeError:
+			# 	# Неверное количество или тип аргумента
+			# 	pass
 			except Exception as e:
 				raise ARPCPException(303, str(e))
 
@@ -349,13 +349,13 @@ class ARPCP:
 			REDIS_CLIENT.set('ARPCP:atask:'+atask_id+':result', str(remote_procedure_result))
 			log_print(extent=20, message=f'*:result {remote_procedure_result}')
 
-		except Exception as e:
-			signal_message = {'atask_id': atask_id, 'atask_status': 'error'}
-			response_message = ARPCP.call('192.168.1.5', 7018, 'signal', signal_message)
-		else:
 			signal_message = {'atask_id': atask_id, 'atask_status': 'done'}
 			response_message = ARPCP.call('192.168.1.5', 7018, 'signal', signal_message)
 			log_print(extent=20, message='handle_atask done')
+
+		except Exception as e:
+			signal_message = {'atask_id': atask_id, 'atask_status': 'error'}
+			response_message = ARPCP.call('192.168.1.5', 7018, 'signal', signal_message)
 
 
 
