@@ -258,11 +258,10 @@ class ARPCP:
 			log_print(extent=20, message='handing request..')
 			request = ARPCP.receive_message(sock, ARPCP.MT_REQ)
 			traffic_print(request, ARPCP.MT_REQ)
+			getattr(ARPCP, f'handle_{request["method"]}')(sock, addr, request)
+			log_print(extent=20, message='request handled')
 		except Exception as e:
 			ARPCPException.handle_exception_with_connection(sock ,e)
-		getattr(ARPCP, f'handle_{request["method"]}')(sock, addr, request)
-		log_print(extent=20, message='request handled')
-
 
 	@staticmethod
 	def handle_procedures(sock, addr, message):
@@ -423,9 +422,8 @@ class ARPCP:
 			signal_message = {'atask_id': atask_id, 'atask_status': atask_status}
 			ARPCPException.handle_atask_exception_at_runtime(signal_message, addr, e)
 		else:
-			response_message = ARPCP.call(addr[0], ADDR_CONF[1], 'signal', signal_message)
+			ARPCP.call(addr[0], ADDR_CONF[1], 'signal', signal_message)
 			log_print(extent=20, message='handle_atask done')
-
 
 
 # ==============================================================================
