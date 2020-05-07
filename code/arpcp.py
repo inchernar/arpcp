@@ -9,12 +9,17 @@ import json
 import types
 import redis
 import socket
-import setproctitle
 import threading as th
 from importlib import reload
 
 import procedures
 import callbacks
+
+PLATFORM = sys.platform
+if PLATFORM in ['linux','linux2']:
+	import setproctitle
+
+
 
 VERSION = '0.3'
 ERROR = True
@@ -43,6 +48,12 @@ proto = {
 		'requires': ['code', 'description', 'data'],
 	}
 }
+
+
+def linux_setproctitle(name):
+	if PLATFORM in ['linux','linux2']:
+		setproctitle.setproctitle(name)
+
 
 # ==============================================================================
 
@@ -87,6 +98,7 @@ class ARPCPException(Exception):
 		self.errno = errno
 		self.errmsg = errmsg
 
+
 	@staticmethod
 	def handle_exception_while_connection(sock,e):
 		if type(e) is ARPCPException:
@@ -104,6 +116,7 @@ class ARPCPException(Exception):
 			traffic_print(error_response, ARPCP.MT_RES)
 			ARPCP.close(sock)
 
+
 	@staticmethod
 	def handle_atask_exception_at_runtime(message, addr, e):
 		if type(e) is ARPCPException:
@@ -114,6 +127,7 @@ class ARPCPException(Exception):
 			print(e)
 		response_message = ARPCP.call(addr[0], ADDR_CONF[1], 'result', message)
 	
+
 	@staticmethod
 	def handle_remote_procedure_execution_exception(e, message):
 		if type(e) is ARPCPException:
@@ -127,6 +141,7 @@ class ARPCPException(Exception):
 
 	# @staticmethod
 	# def handle_connection_exception(e):
+
 
 	@staticmethod
 	def handle_signal_exception_at_runtime(parameter_list):
@@ -157,16 +172,19 @@ class ARPCP:
 		log_print(extent=30, message='server socket created')
 		return sock
 
+
 	@staticmethod
 	def accept(sock):
 		conn, addr = sock.accept()
 		return conn, addr
+
 
 	@staticmethod
 	def close(sock):
 		log_print(extent=30, message='closing socket', end='')
 		sock.close()
 		log_print(extent=30, done = True)
+
 
 	@staticmethod
 	def connect(remote_host, remote_port, timeout = 5):
@@ -207,6 +225,7 @@ class ARPCP:
 		log_print(extent=30, done=True)
 		return message
 
+
 	@staticmethod
 	def receive_message(sock, message_type):
 		log_print(extent=30, message='receiving message..')
@@ -216,12 +235,14 @@ class ARPCP:
 		log_print(extent=30, message='message received')
 		return message
 
+
 	@staticmethod
 	def serialize_message(message, message_type):
 		log_print(extent=30, message='serializing message...', end='')
 		result = (json.dumps(message)+'\r\n').encode('UTF-8')
 		log_print(extent=30, done=True)		
 		return result
+
 
 	@staticmethod
 	def send_message(sock, message, message_type):
@@ -231,13 +252,14 @@ class ARPCP:
 			socketfile.write(message)
 		log_print(extent=30, message='message sended')
 
+
 	# ----- high-level client-side methods for call arpcp methods --------------
+
 
 	@staticmethod
 	def call(remote_host, remote_port, method, headers = {}, additions = {}):
 		log_print(extent=20, message='ARPCP.call method started')
 		try:
-			
 			message = {'method': method, 'version': VERSION}
 
 			if method in ['task', 'atask']:
@@ -265,7 +287,20 @@ class ARPCP:
 			ARPCP.send_message(sock, message, ARPCP.MT_REQ)
 			received_message = ARPCP.receive_message(sock, ARPCP.MT_RES)
 			traffic_print(received_message, ARPCP.MT_REQ)
+
+			if method in ['task', 'atask'] and \
+					received_message['task_status'] == '100' and \
+					REDIS_CLIENT.exists(f'ARPCP:task:{task_id}:callback'):
+				callback = REDIS_CLIENT.get(f'ARPCP:task:{task_id}:callback')
+				log_print(extent=20, message=f'calling callback "{callback}"')
+				reload(callbacks)
+				callback_result = getattr(callbacks, callback)(received_message['task_result'])
+				log_print(extent=20, message=f'callback executed with result "{callback_result}"')
+				log_print(extent=20, message='handle_result done')
+				return callback_result
+
 			ARPCP.close(sock)
+			return received_message
 		except Exception as e:
 			#Нужно что-то с этим сделать
 			print('Ошибка подключаниея')
@@ -283,6 +318,7 @@ class ARPCP:
 
 	# ----- high-level server-side methods for handling arpcp methods ----------
 
+
 	@staticmethod
 	def handle(sock, addr):
 		try:
@@ -293,6 +329,7 @@ class ARPCP:
 			log_print(extent=20, message='request handled')
 		except Exception as e:
 			ARPCPException.handle_exception_while_connection(sock ,e)
+
 
 	@staticmethod
 	def handle_procedures(sock, addr, message):
@@ -336,10 +373,15 @@ class ARPCP:
 
 		if REDIS_CLIENT.exists(f'ARPCP:task:{task_id}:callback'):
 			callback = REDIS_CLIENT.get(f'ARPCP:task:{task_id}:callback')
+			log_print(extent=20, message=f'calling callback "{callback}"')
 			reload(callbacks)
 			callback_result = getattr(callbacks, callback)(task_result)
-
-		log_print(extent=20, message='handle_result done')
+			log_print(extent=20, message=f'callback executed with result "{callback_result}"')
+			log_print(extent=20, message='handle_result done')
+			return callback_result
+		else:	
+			log_print(extent=20, message='handle_result done')
+			return task_result
 
 
 	@staticmethod
@@ -491,6 +533,7 @@ class RemoteNode:
 
 
 	def call(self, method, headers = {}, additions = {}):
+		print(additions)
 		log_print(extent=10, message='RemoteNode.call method started..')
 		log_print(extent=10, message=f'calling {method} request')
 
@@ -499,23 +542,8 @@ class RemoteNode:
 		log_print(extent=10,message='RemoteNode.call method ended')
 		return response['data']
 
+
 	class __procedures:
-
-		# def async_procedure_call_wrapper(self, __remote_procedure):
-
-		# 	def async_procedure_call(__self, *__args, __remote_procedure = __remote_procedure):
-		# 		atask_id = self.node.call(
-		# 			'atask',
-		# 			{
-		# 				'remote_procedure': __remote_procedure,
-		# 				'remote_procedure_args': __args,
-		# 				# 'remote_procedure_kwargs': __kwargs,
-		# 			}
-		# 		)
-		# 		key_response = 'ARPCP:atask:response:'+atask_id+':message'
-
-		# 	return async_procedure_call
-
 
 		def __init__(self, node):
 			log_print(extent=20, message='downloading remote procedures..')
@@ -526,42 +554,40 @@ class RemoteNode:
 
 			for procedure in self.available_procedures:
 				# add sync procedure to <RemoteNodeInstance>.procedures
-				sync_procedure = (lambda __self, *__args, __remote_procedure=procedure: #, **__kwargs:
+				sync_procedure = (lambda __self, *__args, __remote_procedure=procedure, **__kwargs:
 					self.node.call(
 						'task',
 						{
 							'remote_procedure': __remote_procedure,
-							'remote_procedure_args': __args
+							'remote_procedure_args': __args,
 							# 'remote_procedure_kwargs': __kwargs
-						}
+						},
+						additions = __kwargs['additions'],
 					))
 				setattr(self, procedure, types.MethodType( sync_procedure, self ) )
 
 				# add async procedure to <RemoteNodeInstance>.procedures
-
-				# async_procedure = self.async_procedure_call_wrapper(procedure)
-				async_procedure = (lambda __self, *__args, __remote_procedure=procedure: #, **__kwargs:
+				async_procedure = (lambda __self, *__args, __remote_procedure=procedure, **__kwargs:
 					self.node.call(
 						'atask',
 						{
 							'remote_procedure': __remote_procedure,
 							'remote_procedure_args': __args,
 							# 'remote_procedure_kwargs': __kwargs,
-						}
+						},
+						additions = __kwargs['additions'],
 					))
 
 				setattr(self, 'async_' + procedure, types.MethodType( async_procedure, self ) )
 
 				log_print(extent=20, message=f'remote procedure "{procedure}" added')
-				# 	f'def {procedure}(self, *args, **kwargs):',
-				# 	f'	return self.node.call("task", {{"remote_procedure": "{procedure}"}})',
-				# 	f'setattr(self, "{procedure}", types.MethodType( {procedure}, self ))'
-				# ]))
+
 
 		def __repr__(self):
 			return str(self.available_procedures)
 
 # ==============================================================================
+
 
 class ARPCPServer:
 	def __init__(
@@ -592,8 +618,9 @@ class ARPCPServer:
 
 		log_print(extent=10 ,done = True)
 
+
 	def start(self):
-		setproctitle.setproctitle(self.master_threadname)
+		linux_setproctitle(self.master_threadname)
 		log_print(extent=10, message=f'{self.master_threadname} starting')
 
 		log_print(extent=10, message='socket preparing..')
@@ -611,15 +638,18 @@ class ARPCPServer:
 			except (socket.timeout, BlockingIOError):
 				pass
 
+
 	def worker(self, conn, addr):
-		setproctitle.setproctitle(self.worker_threadname)
+		linux_setproctitle(self.worker_threadname)
 		log_print(extent=10,message=f'{self.worker_threadname} started')
 
 		ARPCP.handle(conn, addr)
 
 		log_print(extent=10, message=f'{self.worker_threadname} stopped')
 
+
 # ==============================================================================
+
 
 if __name__ == '__main__':
 	try:
