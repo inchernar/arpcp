@@ -1,7 +1,8 @@
 ## arpcp методы (заголовки пакетов):
 * async task ->
-* signal <-
-* get results ->
+* result <-
+
+* signal ->
 
 * sync task ->
 
@@ -31,7 +32,7 @@
 
 * включение
 * ожидание постановки задач
-* сигнализирование контроллеру
+* возвращение результатов выполнения контроллеру
 * выключение
 
 ---
@@ -40,19 +41,21 @@
 
 Структура протокола сделана по аналогии с json
 
-`Ключевое слово (purpose_word)` - (ATASK, TASK, GET, ID, SIGNAL)
+`Ключевое слово (purpose_word)` - (ATASK, TASK, SIGNAL, ID, RESULT)
 
 `Версия arpcp (p_version)` - (1.0)
 
 ```json
+Все существующие заголовки
+
 request
 {
     "method": "<purpose_word>",
     "version": "<p_version>",  
+    "task_id": "<task_id>",
+    "task_status": "<task_status>",
     "remote_procedure": "<remote-func>",
-    "atask_id": "<atask_id>",
-    "atask_status": "<atask_status>",
-    "remote_procedure_args" : ["<arg1>","<arg2>",...]
+    "remote_procedure_args" : ["<arg1>","<arg2>",...],
 }
 
 response
@@ -90,8 +93,9 @@ request
 {
     "method": "ATASK",
     "version": "<p_version>",  
+    "task_id": "<task_id>",
     "remote_procedure": "<remote-func>",
-    "remote_procedure_args" : ["<arg1>","<arg2>",...]
+    "remote_procedure_args" : ["<arg1>","<arg2>",...],
 }
 ```
 
@@ -100,32 +104,36 @@ response
 ```json
 {
     "code": "<code>",
+    "data": "<data>",
     "description": "<result>",
-    "data": "<data>"
 }
 ```
 
-## SIGNAL
-
+## Result
+ 
 request
 
 ```json
 {
     
-    "method": "SIGNAL",
+    "method": "RESULT",
     "version": "<p_version>",  
-    "atask_id": "<atask_id>",
-    "atask_status": "<atask_status>",
+    "task_id": "<task_id>",
+    "task_result": "<task_result>",
+    "task_status": "<task_status>",
 }
 ```
-### atask_status
+### Atask_status
 
 ```python
-'accepted' - Задача принята и скоро должна начнать выполняться
-'interrupted' - Выполнение задачи было прервано
-'done' - Задача выполнена #В случае метод ничего не возвращает, то result = None
-'client_error' - Неправильные данные от клиента #Равносильно terminate
-'terminate' - Всю информацию об этой задаче следует удалить из хранилища
+'created' - задача создана.
+'sended_to_agent' - задача отправлена агенту.
+'successfully_registered' - агент принял задачу.
+'unregistered' - агент не принял задачу.
+'executing' - выполнение задачи на агенте.
+'done' - задача выполнена #В случае метод ничего не возвращает, то result = None
+'execution_error' - исключение во время выполнения
+'unknown_error' - неизвестная ошибка (агент не отвечает и т.д.)
 ```
 
 response
@@ -133,19 +141,19 @@ response
 ```json
 {
     "code": "<code>",
+    "data": "<data>", //None
     "description": "<result>",
-    "data": "<data>"
 }
 ```
 
-## GET
+## Signal
 
 request
 
 ```json
 {
-    "method": "GET",
-    "version": "ARPCP/<p_version>",  
+    "method": "SIGNAL",
+    "version": "ARPCP/<p_version>",
     "atask_id": "<task-id>",
 }
 ```
@@ -155,8 +163,8 @@ response
 ```json
 {
     "code": "<code>",
+    "data": "<data>", //результат процедуры
     "description": "<result>",
-    "data": "<data>"
 }
 ```
 
@@ -170,7 +178,8 @@ request
     "method": "TASK",
     "version": "<p_version>",  
     "remote_procedure": "<remote-func>",
-    "remote_procedure_args" : ["<arg1>","<arg2>",...]
+    "remote_procedure_args" : ["<arg1>","<arg2>",...],
+    "task_id": "<task_id>", //не обязательно
 }
 ```
 
@@ -179,8 +188,8 @@ response
 ```json
 {
     "code": "<code>",
+    "data": "<data>", //результат задачи
     "description": "<result>",
-    "data": "<data>"
 }
 ```
 
@@ -200,7 +209,28 @@ response
 ```json
 {
     "code": "<code>",
+    "data": "<data>", //mac_addr
     "description": "<result>",
-    "data": "<data>"
+}
+```
+
+## Procedures
+
+request
+
+```json
+{
+    "method": "procedures",
+    "version": "<p_version>",  
+}
+```
+
+response
+
+```json
+{
+    "code": "<code>",
+    "data": "<data>", //список процедур
+    "description": "<result>",
 }
 ```
