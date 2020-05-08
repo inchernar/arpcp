@@ -2,14 +2,16 @@
 
 import arpcp
 
-node1 = arpcp.RemoteNode('192.168.1.6')
+# node1 = arpcp.RemoteNode('192.168.1.5')
 # node1 = arpcp.RemoteNode('192.168.1.116')
 # print(node1.procedures)
 # print(node1.procedures.multiple(2, 6))
 # print(node1.procedures.multiple(2, 6, additions = {'callback': 'double'}))
-print(node1.procedures.async_multiple(2,11,additions = {'callback': 'double'}))
+# print(node1.procedures.async_multiple(2,11,additions = {'callback': 'double'}))
 # print(node1.procedures.multiple(2.02, 5.823))
 # print(node1.procedures.async_func1())
+
+print(arpcp.ARPCP.call('192.168.1.5', 7018, 'id', {'controller_info':{'controller_mac':'MYMAC','controller_ip':'MYIP'}}))
 
 # remote_node.tie(remote_node.procedures.pass('a2w4rr34r5t3'))
 

@@ -21,6 +21,7 @@ if PLATFORM in ['linux','linux2']:
 
 
 
+
 VERSION = '0.3'
 ERROR = True
 REDIS_CLIENT = redis.Redis(host = '127.0.0.1', port = 6379)
@@ -37,6 +38,7 @@ proto = {
 		'requires': ['method', 'version'],
 		'methods': {
 			'procedures': [],
+			# 'id': ['controller_info'],
 			'id': [],
 			'result': ['task_id', 'task_status', 'task_result'],
 			'task': ['remote_procedure','remote_procedure_args'],
@@ -48,6 +50,14 @@ proto = {
 		'requires': ['code', 'description', 'data'],
 	}
 }
+
+def get_mac_addr():
+	address = uuid.getnode()
+	hexeble = iter(hex(address)[2:].zfill(12))
+	mac_addr = ":".join(i + next(hexeble) for i in hexeble)
+	return mac_addr
+
+MAC_ADDR = get_mac_addr()
 
 
 def linux_setproctitle(name):
@@ -277,6 +287,10 @@ class ARPCP:
 				REDIS_CLIENT.set(f'ARPCP:task:{task_id}:message', dumped_message)
 				log_print(extent=20, message=f'*:message {message}')
 
+				default_task_status = 'created'
+				REDIS_CLIENT.set(f'ARPCP:task:{task_id}:status',default_task_status)
+				log_print(extent=20, message=f'*:status {default_task_status}')
+
 				host_addr = json.dumps({'remote_host': remote_host, 'remote_port': remote_port})
 				REDIS_CLIENT.set(f'ARPCP:task:{task_id}:host_addr', host_addr)
 				log_print(extent=20, message=f'*:host_addr {host_addr}')
@@ -286,21 +300,46 @@ class ARPCP:
 			sock = ARPCP.connect(remote_host, remote_port)
 			traffic_print(message, ARPCP.MT_RES)
 			ARPCP.send_message(sock, message, ARPCP.MT_REQ)
+
+			sended_status = 'sended_to_agent'
+			REDIS_CLIENT.set(f'ARPCP:task:{task_id}:status',sended_status)
+			log_print(extent=20, message='request sended to agent')
+
 			received_message = ARPCP.receive_message(sock, ARPCP.MT_RES)
 			traffic_print(received_message, ARPCP.MT_REQ)
 
-			if method == 'task' and \
-					received_message['code'] == 100 and \
-					REDIS_CLIENT.exists(f'ARPCP:task:{task_id}:callback'):
-				callback = (REDIS_CLIENT.get(f'ARPCP:task:{task_id}:callback')).decode('UTF-8')
-				log_print(extent=20, message=f'calling callback "{callback}"')
-				reload(callbacks)
-				callback_result = getattr(callbacks, callback)(received_message['data'])
-				log_print(extent=20, message=f'callback executed with result "{callback_result}"')
-				log_print(extent=20, message='handle_result done')
-				log_print(extent=20, message='ARPCP.call method ended')
-				received_message.update({'data': callback_result})
-				return received_message
+			if method == 'task':
+				if received_message['code'] == 100:
+					done_status = 'done'
+					REDIS_CLIENT.set(f'ARPCP:task:{task_id}:status',done_status)
+					log_print(extent=20, message=f'task {task_id} done')
+
+					if REDIS_CLIENT.exists(f'ARPCP:task:{task_id}:callback'):
+						callback = (REDIS_CLIENT.get(f'ARPCP:task:{task_id}:callback')).decode('UTF-8')
+						log_print(extent=20, message=f'calling callback "{callback}"')
+						reload(callbacks)
+						callback_result = getattr(callbacks, callback)(received_message['data'])
+						log_print(extent=20, message=f'callback executed with result "{callback_result}"')
+						log_print(extent=20, message='handle_result done')
+						log_print(extent=20, message='ARPCP.call method ended')
+						received_message.update({'data': callback_result})
+						return received_message
+			elif method == 'atask':
+				if received_message['code'] == 100:
+					successfully_registered = 'successfully_registered'
+					REDIS_CLIENT.set(f'ARPCP:task:{task_id}:status',successfully_registered)
+					log_print(extent=20, message='sended atask successfully registered')
+
+					if REDIS_CLIENT.exists(f'ARPCP:task:{task_id}:callback'):
+						callback = (REDIS_CLIENT.get(f'ARPCP:task:{task_id}:callback')).decode('UTF-8')
+						log_print(extent=20, message=f'calling callback "{callback}"')
+						reload(callbacks)
+						callback_result = getattr(callbacks, callback)(received_message['data'])
+						log_print(extent=20, message=f'callback executed with result "{callback_result}"')
+						log_print(extent=20, message='handle_result done')
+						log_print(extent=20, message='ARPCP.call method ended')
+						received_message.update({'data': callback_result})
+						return received_message
 
 			ARPCP.close(sock)
 		except Exception as e:
@@ -445,7 +484,6 @@ class ARPCP:
 		log_print(extent=20, message='handle_atask is called')
 
 		try:
-			# atask_id = str(uuid.uuid4())
 			task_id = message["task_id"]
 			remote_procedure = message["remote_procedure"]
 			remote_procedure_args = message['remote_procedure_args']
@@ -468,6 +506,10 @@ class ARPCP:
 			traffic_print(response, ARPCP.MT_RES)
 			ARPCP.close(sock)
 		except Exception as e:
+			task_status = 'unregistered'
+			REDIS_CLIENT.set('ARPCP:task:'+task_id+':status', task_status)
+			log_print(extent=20, message=f'*:status {task_status}')
+
 			ARPCPException.handle_exception_while_connection(sock, e)
 
 		try:
@@ -476,6 +518,11 @@ class ARPCP:
 			log_print(extent=20,done=True)
 			try:
 				log_print(extent=20,message=f'procedure {remote_procedure} calling..')
+
+				task_status = 'executing'
+				REDIS_CLIENT.set('ARPCP:task:'+task_id+':status', task_status)
+				log_print(extent=20, message=f'*:status {task_status}')
+
 				remote_procedure_result = str(getattr(procedures, remote_procedure)(*remote_procedure_args))
 				log_print(extent=20, message='procedure finished')
 			except TypeError as e:
@@ -521,6 +568,26 @@ class ARPCP:
 			log_print(extent=20, message='handle_atask done')
 
 
+	@staticmethod
+	def handle_id(sock, addr, message):
+		log_print(extent=20, message='handle_id is called')
+
+		# controller_mac = message['controller_info']['controller_mac']
+		# REDIS_CLIENT.set('ARPCP:controller:')
+
+		agent_mac = MAC_ADDR
+		response = {'code': 100, 'description': 'OK', 'data': {'agent_mac': agent_mac}}
+		ARPCP.send_message(sock, response, ARPCP.MT_RES)
+		traffic_print(response, ARPCP.MT_RES)
+		ARPCP.close(sock)
+		# try:
+		# 	try:
+		# 	ARPCP.close(sock)
+		# 	log_print(extent=20, message='handle_task done')
+		# except Exception as e:
+		# 	ARPCPException.handle_exception_while_connection(sock, e)
+
+
 # ==============================================================================
 
 
@@ -536,9 +603,18 @@ class RemoteNode:
 
 
 	def call(self, method, headers = {}, additions = {}):
-		print(f'call!!!!!! {additions}')
 		log_print(extent=10, message='RemoteNode.call method started..')
 		log_print(extent=10, message=f'calling {method} request')
+
+		if method in ['task', 'atask']:
+			if 'callback' in additions:
+				log_print(extent=10, message='check out existense callback function')
+				log_print(extent=20, message=f'*:callback {additions["callback"]}')
+				reload(callbacks)
+				try:
+					getattr(callbacks, additions['callback'])
+				except:
+					raise 'Ошибка сallback' 
 
 		response = ARPCP.call(self.remote_host, self.remote_port, method, headers, additions)
 

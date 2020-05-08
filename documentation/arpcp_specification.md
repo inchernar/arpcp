@@ -200,7 +200,8 @@ request
 ```json
 {
     "method": "id",
-    "version": "<p_version>",  
+    "version": "<p_version>",
+    "controller_info": "<controller_info>", //controller_mac, controller_ip
 }
 ```
 
@@ -209,7 +210,7 @@ response
 ```json
 {
     "code": "<code>",
-    "data": "<data>", //mac_addr
+    "data": "<data>", //agent_mac, agent_ip
     "description": "<result>",
 }
 ```
