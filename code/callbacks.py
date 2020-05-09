@@ -1,5 +1,6 @@
-def double(number):
-    return int(number)*2
+# == Procedures for tests =============
 
-def empty(string):
-    return string
+def double(n):
+	return float(n) * 2
+
+# =====================================
