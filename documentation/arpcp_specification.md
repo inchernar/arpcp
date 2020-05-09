@@ -1,7 +1,8 @@
 ## arpcp методы (заголовки пакетов):
 * async task ->
-* signal <-
-* get results ->
+* result <-
+
+* signal ->
 
 * sync task ->
 
@@ -31,7 +32,7 @@
 
 * включение
 * ожидание постановки задач
-* сигнализирование контроллеру
+* возвращение результатов выполнения контроллеру
 * выключение
 
 ---
@@ -40,51 +41,47 @@
 
 Структура протокола сделана по аналогии с json
 
-`Ключевое слово (purpose_word)` - (ATASK, TASK, GET, ECHO, SIGNAL)
+`Ключевое слово (purpose_word)` - (ATASK, TASK, SIGNAL, ID, RESULT)
 
-`Версия arpcp (p_version)` - (ARPCP/1.0)
+`Версия arpcp (p_version)` - (1.0)
 
 ```json
+Все существующие заголовки
+
 request
 {
-    "purpose_word": "<purpose_word>",
-    "p_version": "ARPCP/<p_version>",  
-    "remote-func": "<remote-func>",
-    "task-id": "<task-id>",
-    "task-status": "<task-status>",
-    "remote-func-arg" : {
-        "0": "<arg1>", 
-        "1": "<arg2>",
-        ...
-        "<i>": "<arg<i>>"
-        }
+    "method": "<purpose_word>",
+    "version": "<p_version>",  
+    "task_id": "<task_id>",
+    "task_status": "<task_status>",
+    "remote_procedure": "<remote-func>",
+    "remote_procedure_args" : ["<arg1>","<arg2>",...],
 }
 
 response
 {
     "code": "<code>",
-    "result": "<result>"
+    "description": "<result>",
+    "data": "<data>"
 }
 ```
 Плюс (+) рядом с кодом значит он реализован и используется
 
 ## Описание кодов состояния `"code"`
-* 1xx - Информационные коды
-    * 100 - Возвращает mac-аддрес компьютера (для Echo)             +
-* 2xx - Успешные коды
-    * 200 - Создана асинхронная задача                              +
-    * 201 - Выполнена синхронная задача с результатом               +
-    * 202 - Выполнена синхронная задача без результатом
-* 3xx - Коды ошибки клиента
-    * 300 - Испорченный запрос (Не правильная структура запроса)
-    * 301 - Не верный метод                                         +
-    * 302 - Нет необходимого заголовка
-    * 303 - Вызываемая удаленная функция не существует              +
-    * 304 - Не верные аргументы для вызываемой удаленной функции
-    * 305 - Не верный id запрашиваемой задачи
-    * 306 - Другая версия arpcp протокола
-* 4xx - Коды ошибки сервера
-    * 400 - 
+* 1xx - Успешные коды
+    * 100 - Создана асинхронная задача                              +
+* 2xx - Коды ошибки клиента
+    * 200 - Испорченный запрос (Не правильная структура запроса)
+    * 201 - Не верный метод                                         +
+    * 202 - Нет необходимого заголовка                              +
+    * 203 - Вызываемая удаленная функция не существует              +
+    * 204 - Не верные аргументы для вызываемой удаленной функции    
+    * 205 - Не верный id запрашиваемой задачи
+    * 206 - Другая версия arpcp протокола
+* 3xx - Коды ошибки сервера
+    * 300 - Внутреняя ошибка сервера
+* 4xx - Коды ошибки сигнала
+    * 400 - Ошибка при выполнении удаленной процедуры
 
 
 
@@ -94,62 +91,81 @@ request
 
 ```json
 {
-    "purpose_word": "ATASK",
-    "p_version": "ARPCP/1.0",  
-    "remote-func": "<remote-func>",
-    "remote-func-arg" : {
-        "0": "<arg1>", 
-        "1": "<arg2>",
-        ...
-        "<i>": "<arg<i>>"
-        }
+    "method": "ATASK",
+    "version": "<p_version>",  
+    "task_id": "<task_id>",
+    "remote_procedure": "<remote-func>",
+    "remote_procedure_args" : ["<arg1>","<arg2>",...],
 }
 ```
 
 response
 
-```
-code <code>
-task-id <task_id>
+```json
+{
+    "code": "<code>",
+    "data": "<data>",
+    "description": "<result>",
+}
 ```
 
-## SIGNAL
+## Result
+ 
+request
+
+```json
+{
+    
+    "method": "RESULT",
+    "version": "<p_version>",  
+    "task_id": "<task_id>",
+    "task_result": "<task_result>",
+    "task_status": "<task_status>",
+}
+```
+### Atask_status
+
+```python
+'created' - задача создана.
+'sended_to_agent' - задача отправлена агенту.
+'successfully_registered' - агент принял задачу.
+'unregistered' - агент не принял задачу.
+'executing' - выполнение задачи на агенте.
+'done' - задача выполнена #В случае метод ничего не возвращает, то result = None
+'execution_error' - исключение во время выполнения
+'unknown_error' - неизвестная ошибка (агент не отвечает и т.д.)
+```
+
+response
+
+```json
+{
+    "code": "<code>",
+    "data": "<data>", //None
+    "description": "<result>",
+}
+```
+
+## Signal
 
 request
 
 ```json
 {
-    "purpose_word": "SIGNAL",
-    "p_version": "ARPCP/1.0",  
-    "task-id": "<task-id>",
-    "task-status": "<task-status>",
+    "method": "SIGNAL",
+    "version": "ARPCP/<p_version>",
+    "atask_id": "<task-id>",
 }
 ```
 
 response
-
-```
-code <code>
-???
-```
-
-## GET
-
-request
 
 ```json
 {
-    "purpose_word": "GET",
-    "p_version": "ARPCP/<p_version>",  
-    "task-id": "<task-id>",
+    "code": "<code>",
+    "data": "<data>", //результат процедуры
+    "description": "<result>",
 }
-```
-
-response
-
-```
-code <code>
-result <result>
 ```
 
 
@@ -159,42 +175,63 @@ request
 
 ```json
 {
-    "purpose_word": "TASK",
-    "p_version": "ARPCP/<p_version>",  
-    "remote-func": "<remote-func>",
-    "remote-func-arg" : {
-        "0": "<arg1>", 
-        "1": "<arg2>",
-        ...
-        "<i>": "<arg<i>>"
-        }
+    "method": "TASK",
+    "version": "<p_version>",  
+    "remote_procedure": "<remote-func>",
+    "remote_procedure_args" : ["<arg1>","<arg2>",...],
+    "task_id": "<task_id>", //не обязательно
 }
 ```
 
 response
 
-```
-code <code>
-result <result>
+```json
+{
+    "code": "<code>",
+    "data": "<data>", //результат задачи
+    "description": "<result>",
+}
 ```
 
-## Sync Task
+## Id
 
 request
 
 ```json
 {
-    "purpose_word": "ECHO",
-    "p_version": "ARPCP/<p_version>",  
-    ...
-    maybe mac_addr
+    "method": "id",
+    "version": "<p_version>",
+    "controller_info": "<controller_info>", //controller_mac, controller_ip
 }
 ```
 
 response
 
+```json
+{
+    "code": "<code>",
+    "data": "<data>", //agent_mac, agent_ip
+    "description": "<result>",
+}
 ```
-code <code>
-pong
-mac_addr ???
+
+## Procedures
+
+request
+
+```json
+{
+    "method": "procedures",
+    "version": "<p_version>",  
+}
+```
+
+response
+
+```json
+{
+    "code": "<code>",
+    "data": "<data>", //список процедур
+    "description": "<result>",
+}
 ```

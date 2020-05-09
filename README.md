@@ -44,3 +44,23 @@ git pull
 git checkout <user>-dev
 git merge master
 ```
+
+## Unit-тестирование
+
+Необходимые python3 модули:
+* pytest
+* pytest-cov
+
+Из рабочей директории `.../dissertation/code/`
+
+Выполнить команду
+
+```shell
+python3 -B -m pytest -v -l --cov=arpcp ./tests/tests.py
+```
+
+Для вывода логов тестируемых функций нужно добавить параметр `-s`:
+
+```shell
+python3 -B -m pytest -v -l -s --cov=arpcp ./tests/tests.py
+```
