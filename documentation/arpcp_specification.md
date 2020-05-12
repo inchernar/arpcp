@@ -127,7 +127,7 @@ request
 
 ```python
 'created' - задача создана.
-'sended_to_agent' - задача отправлена агенту.
+'sent_to_agent' - задача отправлена агенту.
 'successfully_registered' - агент принял задачу.
 'unregistered' - агент не принял задачу.
 'executing' - выполнение задачи на агенте.
