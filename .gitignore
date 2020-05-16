@@ -1,4 +1,6 @@
 /**/__pycache__/
+/**/.vscode/
+/**/.pytest_cache
 /code/.coverage
 /code/app.py
 
