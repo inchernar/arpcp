@@ -15,7 +15,7 @@ from importlib import reload
 import procedures
 import callbacks
 
-VERSION = '0.5'
+VERSION = '0.6'
 ERROR = True
 LOG = 30
 # 0,False - without logging
@@ -23,6 +23,10 @@ LOG = 30
 # 20 - logging without low-level methods
 # 30 - Full logging
 
+# @TODO
+# - all redis ops do with pipelines!!! (conqurent writing into redis)
+# - try...except for all redis.get ops
+# - difficulties with simultaneously client & server logging
 
 # ==============================================================================
 
@@ -121,7 +125,17 @@ class ARPCP:
 		}
 	}
 
-	task_statuses = ['created','sended_to_agent','successfully_registered','unregistered','executing','done','execution_error','unknown_error']
+	task_statuses = [
+		'created',
+		'sended_to_agent',
+		'successfully_registered',
+		'unregistered',
+		'executing',
+		'done',
+		'execution_error',
+		'callback_error',
+		'unknown_error'
+	]
 
 	MT_REQ = 0
 	MT_RES = 1
@@ -132,19 +146,22 @@ class ARPCP:
 	def redis(host = '127.0.0.1', port = 6379):
 		return redis.Redis(host = host, port = port, decode_responses = True)
 
+
 	@staticmethod
 	def erase_task_from_redis(r, task_id):
 		try:
 			# remove from assigned tasks
 			if r.exists('ARPCP:tasks:assign'):
 				assigned_tasks = json.loads(r.get('ARPCP:tasks:assign'))
-				assigned_tasks.remove(task_id)
-				r.set('ARPCP:tasks:assign', json.dumps(assigned_tasks))
+				if task_id in assigned_tasks:
+					assigned_tasks.remove(task_id)
+					r.set('ARPCP:tasks:assign', json.dumps(assigned_tasks))
 			# remove from executed tasks
 			if r.exists('ARPCP:tasks:execute'):
 				executed_tasks = json.loads(r.get('ARPCP:tasks:execute'))
-				executed_tasks.remove(task_id)
-				r.set('ARPCP:tasks:execute', json.dumps(executed_tasks))
+				if task_id in executed_tasks:
+					executed_tasks.remove(task_id)
+					r.set('ARPCP:tasks:execute', json.dumps(executed_tasks))
 			# remove all keys
 			r.delete(f'ARPCP:task:{task_id}:message')
 			r.delete(f'ARPCP:task:{task_id}:status')
@@ -339,9 +356,7 @@ class ARPCP:
 		log_print(extent=30, message='message sent')
 		traffic_print(message, message_type)
 
-
 	# ----- high-level client-side methods for call arpcp methods --------------
-
 
 	@staticmethod
 	def call(remote_host, remote_port, method, headers = {}, additions = {}):
@@ -368,6 +383,7 @@ class ARPCP:
 				_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
 			except Exception as e:
 				return {'code': 1701, 'description': str(e), 'data': None}
+
 			# Check & registering callback
 			if 'callback' in additions:
 				log_print(extent=20, message='check out existense callback function')
@@ -377,19 +393,23 @@ class ARPCP:
 					getattr(callbacks, additions['callback'])
 				except Exception as e:
 					return {'code': 1702, 'description': str(e), 'data': None}
-					# raise ARPCPCallTaskException(300, f'callback {additions["callback"]} does not exist!', task_id)
 				log_print(extent=20, message=f'callback {additions["callback"]} exists!')
 				_redis.set(f'ARPCP:task:{task_id}:callback', additions['callback'])
+
 			# Check & update ARPCP:tasks:assign, append task_id
 			if not _redis.exists('ARPCP:tasks:assign'):
 				_redis.set('ARPCP:tasks:assign', json.dumps([]))
 			assigned_tasks = json.loads(_redis.get('ARPCP:tasks:assign'))
 			if task_id in assigned_tasks:
 				return {'code': 1703, 'description': f'task {task_id} already exists!', 'data': None}
-				# raise ARPCPCallTaskException(316, f'task {task_id} already exists!', task_id)
+			# @TODO pipe begin
+			assigned_tasks = json.loads(_redis.get('ARPCP:tasks:assign'))
 			assigned_tasks.append(task_id)
 			_redis.set('ARPCP:tasks:assign', json.dumps(assigned_tasks))
+			# @TODO pipe end
+
 			# Set meta info about assigned task into redis
+			log_print(extent=20, message='saving data in redis with ARPCP:task:<id>:* prefix')
 			_redis.set(f'ARPCP:task:{task_id}:message', json.dumps(message))
 			log_print(extent=20, message=f'*:message {message}')
 			default_task_status = 'created'
@@ -411,7 +431,7 @@ class ARPCP:
 
 			## intermediate processing
 			sent_status = 'sent_to_agent'
-			_redis.set(f'ARPCP:task:{task_id}:status',sent_status)
+			_redis.set(f'ARPCP:task:{task_id}:status', sent_status)
 			log_print(extent=20, message=f'*:status {sent_status}')
 
 			## response receiving
@@ -433,13 +453,12 @@ class ARPCP:
 					try:
 						result = getattr(callbacks, callback)(received_message['data']['result'])
 					except Exception as e:
-						ARPCP.erase_task_from_redis(_redis, task_id)
-						return {'code': 1101, 'description': str(e), 'data': received_message['data']}
+						_redis.set(f'ARPCP:task:{task_id}:status', 'callback_error')
+						return {'code': 1101, 'description': str(e), 'data': None}
 					log_print(extent=20, message=f'callback executed with result "{result}"')
 				received_message['data'].update({'result': result})
-				_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(result))
 				_redis.set(f'ARPCP:task:{task_id}:status', 'done')
-				_redis.set(f'ARPCP:task:{task_id}:result', received_message['data']['result'])
+				_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(result))
 			else:
 				ARPCP.erase_task_from_redis(_redis, task_id)
 				return received_message
@@ -448,40 +467,38 @@ class ARPCP:
 			return received_message
 
 		elif method == 'atask':
-			_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
-			# Get task_id
 			try:
 				task_id = message['task_id']
 			except Exception as e:
-				# @TODO !!!
-				pass
+				return {'code': 1700, 'description': 'task id is not specified', 'data': None}
+			try:
+				_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
+			except Exception as e:
+				return {'code': 1701, 'description': str(e), 'data': None}
 
-			# Main action
-			log_print(extent=20, message=f'generated id for task - {task_id}')
-			log_print(extent=20, message='saving data in redis with ARPCP:task:<id>:* prefix')
+			# Check & registering callback
+			if 'callback' in additions:
+				log_print(extent=20, message='check out existense callback function')
+				try:
+					import callbacks
+					reload(callbacks)
+					getattr(callbacks, additions['callback'])
+				except Exception as e:
+					return {'code': 1702, 'description': str(e), 'data': None}
+				log_print(extent=20, message=f'callback {additions["callback"]} exists!')
+				_redis.set(f'ARPCP:task:{task_id}:callback', additions['callback'])
 
 			# Check & update ARPCP:tasks:assign, append task_id
 			if not _redis.exists('ARPCP:tasks:assign'):
 				_redis.set('ARPCP:tasks:assign', json.dumps([]))
 			assigned_tasks = json.loads(_redis.get('ARPCP:tasks:assign'))
 			if task_id in assigned_tasks:
-				raise ARPCPCallTaskException(316, f'task {task_id} already exists!', task_id)
+				return {'code': 1703, 'description': f'task {task_id} already exists!', 'data': None}
 			assigned_tasks.append(task_id)
 			_redis.set('ARPCP:tasks:assign', json.dumps(assigned_tasks))
 
-			# Check & registering callback
-			if 'callback' in additions:
-				log_print(extent=20, message='check out callback existense')
-				reload(callbacks)
-				try:
-					getattr(callbacks, additions['callback'])
-					log_print(extent=20, message=f'callback {additions["callback"]} exists!')
-				except:
-					raise ARPCPCallTaskException(300, f'callback {additions["callback"]} does not exist!', task_id)
-				_redis.set(f'ARPCP:task:{task_id}:callback', additions['callback'])
-				log_print(extent=20, message=f'*:callback {additions["callback"]}')
-
 			# Set meta info about assigned task into redis
+			log_print(extent=20, message='saving data in redis with ARPCP:task:<id>:* prefix')
 			_redis.set(f'ARPCP:task:{task_id}:message', json.dumps(message))
 			log_print(extent=20, message=f'*:message {message}')
 			default_task_status = 'created'
@@ -491,17 +508,29 @@ class ARPCP:
 			_redis.set(f'ARPCP:task:{task_id}:host_addr', host_addr)
 			log_print(extent=20, message=f'*:host_addr {host_addr}')
 
-			# Send request
+			## connection openning
 			sock = ARPCP.connect(remote_host, remote_port)
-			ARPCP.send_message(sock, message, ARPCP.MT_REQ)
 
-			# Update assigned task status after request sending
+			## request sending
+			try:
+				ARPCP.send_message(sock, message, ARPCP.MT_REQ)
+			except ARPCPException as e:
+				ARPCP.erase_task_from_redis(_redis, task_id)
+				return {'code': e.errno, 'description': e.errmsg, 'data': None}
+
+			## intermediate processing
 			sent_status = 'sent_to_agent'
 			_redis.set(f'ARPCP:task:{task_id}:status', sent_status)
 			log_print(extent=20, message=f'*:status {sent_status}')
 
-			# Receive response
-			received_message = ARPCP.receive_message(sock, ARPCP.MT_RES)
+			## response receiving
+			try:
+				received_message = ARPCP.receive_message(sock, ARPCP.MT_RES)
+			except Exception as e:
+				ARPCP.erase_task_from_redis(_redis, task_id)
+				return {'code': 1704, 'description': str(e), 'data': None}
+
+			## closing the connection
 			ARPCP.close(sock)
 
 			# Update assigned task status after response receiving
@@ -513,7 +542,6 @@ class ARPCP:
 				unregistered = 'unregistered'
 				_redis.set(f'ARPCP:task:{task_id}:status', unregistered)
 				log_print(extent=20, message=f'*:status {unregistered}')
-			log_print(extent=20,message=f'response code is {received_message["code"]}. {received_message["description"]}')
 
 			log_print(extent=20, message='ARPCP.call method finished')
 			return received_message
@@ -528,7 +556,6 @@ class ARPCP:
 				ARPCP.send_message(sock, message, ARPCP.MT_REQ)
 			except ARPCPException as e:
 				return {'code': e.errno, 'description': e.errmsg, 'data': None}
-			traffic_print(message, ARPCP.MT_RES)
 			## intermediate processing
 			pass
 			## response receiving
@@ -544,7 +571,6 @@ class ARPCP:
 			return received_message
 
 	# ----- high-level server-side methods for handling arpcp methods ----------
-
 
 	@staticmethod
 	def handle(sock, addr):
@@ -618,7 +644,7 @@ class ARPCP:
 			reload(procedures)
 		except Exception as e:
 			error_print(str(e))
-			error_response = {'code': 220, 'description': str(e), 'data': None}
+			error_response = {'code': 200, 'description': str(e), 'data': None}
 			try:
 				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
 			except ARPCPException as e:
@@ -659,7 +685,7 @@ class ARPCP:
 			reload(procedures)
 		except Exception as e:
 			error_print(str(e))
-			error_response = {'code': 200, 'description': str(e), 'data': {'task_id': task_id, 'result': None}}
+			error_response = {'code': 201, 'description': str(e), 'data': {'task_id': task_id, 'result': None}}
 			try:
 				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
 			except ARPCPException as e:
@@ -677,7 +703,7 @@ class ARPCP:
 			remote_procedure_result = getattr(procedures, remote_procedure)(*remote_procedure_args)
 		except Exception as e:
 			error_print(str(e))
-			error_response = {'code': 301, 'description': 'procedure execution error', 'data': {'task_id': task_id, 'result': None}}
+			error_response = {'code': 202, 'description': 'procedure execution error', 'data': {'task_id': task_id, 'result': None}}
 			try:
 				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
 			except ARPCPException as e:
@@ -713,183 +739,262 @@ class ARPCP:
 
 	@staticmethod
 	def handle_result(sock, addr, message):
-		log_print(extent=20, message='handle_result called')
-		_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
+		log_print(extent=20, message='handle_result started')
 
-		# check task_id in ARPCP:tasks:assign
-
+		# check redis availability
 		try:
-			if message['task_status'] in ARPCP.task_statuses:
-				response = {'code': 100, 'description': 'OK', 'data': 'OK'}
-				traffic_print(response, ARPCP.MT_RES)
-				ARPCP.send_message(sock, response, ARPCP.MT_RES)
-				ARPCP.close(sock)
-			else:
-				raise ARPCPException(310, f'task status {message["task_status"]} is undefined')
+			_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
 		except Exception as e:
-			ARPCPException.handle_execution_exception(e, sock)
+			error_response = {'code': 203, 'description': 'redis unavailable', 'data': None}
+			try:
+				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
+			except ARPCPException as e:
+				log_print(extent=20, message='handle_result finished with error')
+				return
+			except Exception as e:
+				raise e
+			log_print(extent=20, message='handle_result finished with error')
+			ARPCP.close(sock)
+			return
 
 		task_id = message['task_id']
 		task_result = message['task_result']
 		task_status = message['task_status']
 
+		# check task_id in ARPCP:tasks:assign
+		if not _redis.exists('ARPCP:tasks:assign') or \
+				(not task_id in json.loads(_redis.get('ARPCP:tasks:assign'))):
+			error_response = {'code': 204, 'description': 'unknown assign task', 'data': None}
+			try:
+				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
+			except ARPCPException as e:
+				log_print(extent=20, message='handle_result finished with error')
+				return
+			except Exception as e:
+				raise e
+			log_print(extent=20, message='handle_result finished with error')
+			ARPCP.close(sock)
+			return
+
+		# check task_status
+		if not task_status in ARPCP.task_statuses:
+			error_response = {'code': 206, 'description': 'incorrect task status', 'data': None}
+			try:
+				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
+			except ARPCPException as e:
+				log_print(extent=20, message='handle_result finished with error')
+				return
+			except Exception as e:
+				raise e
+			log_print(extent=20, message='handle_result finished with error')
+			ARPCP.close(sock)
+			return
+
+		# update data in redis
 		log_print(extent=20, message='saving data in redis with ARPCP:task:* prefix')
 		_redis.set(f'ARPCP:task:{task_id}:status', task_status)
 		log_print(extent=20, message=f'*:status {task_status}')
 		_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(task_result))
 		log_print(extent=20, message=f'*:result {task_result}')
 
-		# @TODO!!!
+		# send OK response
+		response = {'code': 100, 'description': 'OK', 'data': 'OK'}
+		try:
+			ARPCP.send_message(sock, response, ARPCP.MT_RES)
+		except ARPCPException as e:
+			log_print(extent=20, message='handle_result finished with error')
+			return
+		except Exception as e:
+			raise e
+
+		# execute callback
 		if _redis.exists(f'ARPCP:task:{task_id}:callback') and \
 				task_status == 'done':
+			import callbacks
+			reload(callbacks)
+			callback = _redis.get(f'ARPCP:task:{task_id}:callback')
+			log_print(extent=20, message=f'calling callback "{callback}"')
 			try:
-				import callbacks
-				callback = _redis.get(f'ARPCP:task:{task_id}:callback')
-				log_print(extent=20, message=f'calling callback "{callback}"')
-				reload(callbacks)
-				callback_result = getattr(callbacks, callback)(task_result)
-				log_print(extent=20, message=f'callback executed with result "{callback_result}"')
-				log_print(extent=20, message='handle_result done')
-				_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(callback_result))
-			except TypeError as e:
-				# Неверное количество или тип аргумента
-				raise ARPCPException(320, str(e))
-			except AttributeError as e:
-				# Неверное имя процедуры
-				raise ARPCPException(321, str(e))
+				task_result = getattr(callbacks, callback)(task_result)
 			except Exception as e:
-				raise ARPCPException(322, str(e))
-		else:
-			log_print(extent=20, message='handle_result done')
+				task_result = None
+				log_print(extent=20, message='handle_result finished with error')
+				_redis.set(f'ARPCP:task:{task_id}:status', 'callback_error')
+				_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(task_result))
+				log_print(extent=20, message=f'*:result {task_result}')
+				return
+			log_print(extent=20, message=f'callback executed with result "{task_result}"')
+			_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(task_result))
+			log_print(extent=20, message=f'*:result {task_result}')
+
+		ARPCP.close(sock)
+		log_print(extent=20, message='handle_result finished')
 
 
 	@staticmethod
 	def handle_signal(sock, addr, message):
-		log_print(extent=20, message='handle_signal called')
-		_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
+		log_print(extent=20, message='handle_signal started')
 
+		# check redis availability
 		try:
-			if message['task_id'] in json.loads(_redis.get('ARPCP:tasks:execute')):
-				response = {'code': 100, 'description': 'OK', 'data': None}
-				ARPCP.send_message(sock, response, ARPCP.MT_RES)
-				ARPCP.close(sock)
-				task_id = message['task_id']
-				task_result = json.loads(_redis.get(f'ARPCP:task:{task_id}:result'))
-				task_status = _redis.get(f'ARPCP:task:{task_id}:status')
-				result_message = {'task_result': task_result, 'task_status': task_status, 'task_id': task_id}
-
-				# check response_result_message
-				response_result_message = ARPCP.call(addr[0], ADDR_CONF[1], 'result', result_message)
-				traffic_print(response_result_message, ARPCP.MT_REQ)
-
-				log_print(extent=20, message='handle_signal done')
-			else:
-				raise ARPCPException(315, 'Non existent task id')
+			_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
 		except Exception as e:
-			ARPCPException.handle_execution_exception(e, sock)
+			error_response = {'code': 203, 'description': 'redis unavailable', 'data': None}
+			try:
+				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
+			except ARPCPException as e:
+				log_print(extent=20, message='handle_signal finished with error')
+				return
+			except Exception as e:
+				raise e
+			log_print(extent=20, message='handle_signal finished with error')
+			ARPCP.close(sock)
+			return
+
+		task_id = message['task_id']
+
+		# check task_id in ARPCP:tasks:execute
+		if not _redis.exists('ARPCP:tasks:execute') or \
+				(not task_id in json.loads(_redis.get('ARPCP:tasks:execute'))):
+			error_response = {'code': 205, 'description': 'unknown execute task', 'data': None}
+			try:
+				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
+			except ARPCPException as e:
+				log_print(extent=20, message='handle_result finished with error')
+				return
+			except Exception as e:
+				raise e
+			log_print(extent=20, message='handle_result finished with error')
+			ARPCP.close(sock)
+			return
+
+		# send OK response
+		response = {'code': 100, 'description': 'OK', 'data': 'OK'}
+		try:
+			ARPCP.send_message(sock, response, ARPCP.MT_RES)
+		except ARPCPException as e:
+			log_print(extent=20, message='handle_result finished with error')
+			return
+		except Exception as e:
+			raise e
+		ARPCP.close(sock)
+
+		task_result = json.loads(_redis.get(f'ARPCP:task:{task_id}:result'))
+		task_status = _redis.get(f'ARPCP:task:{task_id}:status')
+		result_request = {'task_result': task_result, 'task_status': task_status, 'task_id': task_id}
+		result_response = ARPCP.call(addr[0], ADDR_CONF[1], 'result', result_request)
+
+		log_print(extent=20, message='handle_signal finished')
 
 
 	@staticmethod
 	def handle_atask(sock, addr, message):
-		log_print(extent=20, message='handle_atask called')
-		_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
+		log_print(extent=20, message='handle_atask started')
+
+		# check redis availability
+		try:
+			_redis = ARPCP.redis(REDIS_HOST, REDIS_PORT)
+		except Exception as e:
+			error_response = {'code': 203, 'description': 'redis unavailable', 'data': None}
+			try:
+				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
+			except ARPCPException as e:
+				log_print(extent=20, message='handle_atask finished with error')
+				return
+			except Exception as e:
+				raise e
+			log_print(extent=20, message='handle_atask finished with error')
+			ARPCP.close(sock)
+			return
+
 		task_id = message["task_id"]
 		remote_procedure = message["remote_procedure"]
 		remote_procedure_args = message['remote_procedure_args']
 		default_result = None
 		default_task_status = 'created'
 
-		# 1 part. Request receiving
-		try:
-			# Check & update ARPCP:tasks:assign, append task_id
-			if not _redis.exists('ARPCP:tasks:execute'):
-				_redis.set('ARPCP:tasks:execute', json.dumps([]))
-			assigned_tasks = json.loads(_redis.get('ARPCP:tasks:execute'))
-			if task_id in assigned_tasks:
-				raise ARPCPException(316, f'task {task_id} already exists!')
-			assigned_tasks.append(task_id)
-			_redis.set('ARPCP:tasks:execute', json.dumps(assigned_tasks))
-
-			# Set meta info about executing task into redis
-			log_print(extent=20, message='saving data in redis with ARPCP:task:* prefix')
-			_redis.set(f'ARPCP:task:{task_id}:message', str(message))
-			log_print(extent=20, message=f'*:message {message}')
-			_redis.set(f'ARPCP:task:{task_id}:caller_ip', str(addr[0]))
-			log_print(extent=20, message=f'*:caller_ip {str(addr[0])}')
-			_redis.set(f'ARPCP:task:{task_id}:status', default_task_status)
-			log_print(extent=20, message=f'*:status {default_task_status}')
-			_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(default_result))
-			log_print(extent=20, message=f'*:result {default_result}')
-
-			# Send response
-			response = {
-				'code': 100,
-				'description': 'OK',
-				'data': {
-					'task_id': task_id,
-					'result': None
-				}
-			}
-			ARPCP.send_message(sock, response, ARPCP.MT_RES)
+		## 1 part. Request receiving
+		# Check & update ARPCP:tasks:execute, append task_id
+		if not _redis.exists('ARPCP:tasks:execute'):
+			_redis.set('ARPCP:tasks:execute', json.dumps([]))
+		executed_tasks = json.loads(_redis.get('ARPCP:tasks:execute'))
+		if task_id in executed_tasks:
+			error_response = {'code': 207, 'description': f'task {task_id} already exists!', 'data': {'task_id': task_id, 'result': None}}
+			try:
+				ARPCP.send_message(sock, error_response, ARPCP.MT_RES)
+			except ARPCPException as e:
+				log_print(extent=20, message='handle_atask finished with error')
+				return
+			except Exception as e:
+				raise e
+			log_print(extent=20, message='handle_atask finished with error')
 			ARPCP.close(sock)
+			return
+		# @TODO pipe begin
+		executed_tasks = json.loads(_redis.get('ARPCP:tasks:execute'))
+		executed_tasks.append(task_id)
+		_redis.set('ARPCP:tasks:execute', json.dumps(executed_tasks))
+		# @TODO pipe end
+
+		# Set meta info about executing task into redis
+		log_print(extent=20, message='saving data in redis with ARPCP:task:* prefix')
+		_redis.set(f'ARPCP:task:{task_id}:message', str(message))
+		log_print(extent=20, message=f'*:message {message}')
+		_redis.set(f'ARPCP:task:{task_id}:caller_ip', str(addr[0]))
+		log_print(extent=20, message=f'*:caller_ip {str(addr[0])}')
+		_redis.set(f'ARPCP:task:{task_id}:status', default_task_status)
+		log_print(extent=20, message=f'*:status {default_task_status}')
+		_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(default_result))
+		log_print(extent=20, message=f'*:result {default_result}')
+
+		# send OK response
+		response = {'code': 100, 'description': 'OK', 'data': {'task_id': task_id, 'result': None}}
+		try:
+			ARPCP.send_message(sock, response, ARPCP.MT_RES)
+		except ARPCPException as e:
+			ARPCP.erase_task_from_redis(_redis, task_id)
+			log_print(extent=20, message='handle_atask finished with error')
+			return
 		except Exception as e:
-			_redis.delete(f'ARPCP:task:{task_id}:message')
-			_redis.delete(f'ARPCP:task:{task_id}:caller_ip')
-			_redis.delete(f'ARPCP:task:{task_id}:status')
-			_redis.delete(f'ARPCP:task:{task_id}:result')
-			log_print(extent=20, message=f'Something go wrong, purged task {task_id} data from redis')
-			ARPCPException.handle_task_exception(e, sock, task_id)
+			raise e
+		ARPCP.close(sock)
+
+		## 2 part. Procedure executing & sending result
+		# import & reload procedures
+		try:
+			log_print(extent=20, message='procedures reloading..')
+			import procedures
+			reload(procedures)
+		except Exception as e:
+			# @TODO update redis status
+			error_print(str(e))
+			result_message = {'task_id': task_id, 'task_result': None, 'task_status': 'execution_error'}
+			ARPCP.call(addr[0], ADDR_CONF[1], 'result', result_message)
+			log_print(extent=20, message='handle_task finished with error')
 			return
 
-		# 2 part. Procedure executing & sending result
+		# execute procedure
+		log_print(extent=20,message=f'procedure {remote_procedure} started..')
+		# @TODO update redis status
 		try:
-			log_print(extent=20, message='procedures reloading...', end='')
-			reload(procedures)
-			log_print(extent=20,done=True)
-			try:
-				log_print(extent=20,message=f'procedure {remote_procedure} executing..')
-
-				# Update executing task status after request receiving
-				task_status = 'executing'
-				_redis.set(f'ARPCP:task:{task_id}:status', task_status)
-				log_print(extent=20, message=f'*:status {task_status}')
-				remote_procedure_result = getattr(procedures, remote_procedure)(*remote_procedure_args)
-				log_print(extent=20, message='procedure executed successfully')
-			except TypeError as e:
-				# Procedure args error
-				raise ARPCPException(304, str(e))
-			except AttributeError as e:
-				# Wrong procedure name
-				raise ARPCPException(305, str(e))
-			except Exception as e:
-				raise ARPCPException(306, str(e))
-
-			result_message = {
-				'task_id': task_id,
-				'task_result': remote_procedure_result,
-				'task_status': 'done',
-			}
+			remote_procedure_result = getattr(procedures, remote_procedure)(*remote_procedure_args)
 		except Exception as e:
-			log_print(extent=20, message=f'procedure executing error')
+			# @TODO update redis status
 			error_print(str(e))
-			result_message = {
-				'task_id': task_id,
-				'task_result': str(e),
-				'task_status': 'executing_error',
-			}
-		else:
-			log_print(extent=20, message='saving result in redis with ARPCP:task:* prefix')
-			_redis.set(f'ARPCP:task:{task_id}:status', result_message['task_status'])
-			log_print(extent=20, message=f'*:status {result_message["task_status"]}')
-			_redis.set(f'ARPCP:task:{task_id}:result', json.dumps(result_message['task_result']))
-			log_print(extent=20, message=f'*:result {result_message["task_result"]}')
-
+			result_message = {'task_id': task_id, 'task_result': None, 'task_status': 'execution_error'}
 			ARPCP.call(addr[0], ADDR_CONF[1], 'result', result_message)
-			log_print(extent=20, message='handle_atask done')
+			log_print(extent=20, message='handle_task finished with error')
+			return
+		log_print(extent=20, message='procedure finished')
+		# @TODO update redis status
 
+		# send result
+		result_message = {'task_id': task_id, 'task_result': remote_procedure_result, 'task_status': 'done'}
+		ARPCP.call(addr[0], ADDR_CONF[1], 'result', result_message)
+
+		log_print(extent=20, message='handle_atask finished')
 
 # ==============================================================================
-
 
 class RemoteNode:
 	def __init__(self, remote_host='0.0.0.0', remote_port=7018):
@@ -960,7 +1065,6 @@ class RemoteNode:
 
 # ==============================================================================
 
-
 class ARPCPServer:
 	def __init__(
 		self,
@@ -1023,9 +1127,7 @@ class ARPCPServer:
 
 		log_print(extent=10, message=f'{self.worker_threadname} stopped')
 
-
 # ==============================================================================
-
 
 if __name__ == '__main__':
 	try:
