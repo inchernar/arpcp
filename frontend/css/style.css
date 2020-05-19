@@ -1,0 +1,54 @@
+body{
+	background-color: #42455A;
+}
+
+#topology-graph{
+	position: fixed;
+	background-color: white;
+	/*border: 1px solid black;*/
+	width: 800px;
+	height: 500px;
+	border-radius: 10px;
+	padding: 10px;
+}
+
+#statistic-chart{
+	position: fixed;
+	background-color: white;
+	border-radius: 10px;
+	width: 600px;
+	height: 400px;
+	top: 535px;
+}
+
+#statistic-table{
+	position: fixed;
+	background-color: white;
+	border-radius: 10px;
+	height: 400px;
+	width: 212px;
+	top: 535px;
+	left: 615px;
+}
+
+#node-controls{
+	position: fixed;
+	background-color: white;
+	/*border: 1px solid red;*/
+	border-radius: 10px;
+	left: 835px;
+	width: 1055px;
+	height: 380px;
+	padding: 10px;
+}
+
+#tasks-table{
+	position: fixed;
+	background-color: white;
+	border-radius: 10px;
+	top: 415px;
+	left: 835px;
+	width: 1055px;
+	height: 500px;
+	padding: 10px;
+}

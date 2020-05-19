@@ -360,6 +360,7 @@ class ARPCP:
 
 	@staticmethod
 	def call(remote_host, remote_port, method, headers = {}, additions = {}):
+	# def call(remote_host, remote_port, method, headers = {}, additions = {}):
 		log_print(extent=20, message='ARPCP.call method started')
 
 		if (not type(remote_host) is str) or \
@@ -996,72 +997,72 @@ class ARPCP:
 
 # ==============================================================================
 
-class RemoteNode:
-	def __init__(self, remote_host='0.0.0.0', remote_port=7018):
-		log_print(extent=10, message='initializing RemoteNode..')
+# class RemoteNode:
+# 	def __init__(self, remote_host='0.0.0.0', remote_port=7018):
+# 		log_print(extent=10, message='initializing RemoteNode..')
 
-		self.remote_host = remote_host
-		self.remote_port = remote_port
-		self.procedures = self.__procedures(self)
+# 		self.remote_host = remote_host
+# 		self.remote_port = remote_port
+# 		self.procedures = self.__procedures(self)
 
-		log_print(extent=10, message='RemoteNode initialized')
-
-
-	def call(self, method, headers = {}, additions = {}):
-		log_print(extent=10, message='RemoteNode.call method started..')
-		log_print(extent=10, message=f'calling {method} request')
-
-		response = ARPCP.call(self.remote_host, self.remote_port, method, headers, additions)
-		log_print(extent=10,message='RemoteNode.call method finished')
-
-		if response['code'] is 100:
-			return response['data']
-		else:
-			raise ARPCPException(response['code'], response['description'])
+# 		log_print(extent=10, message='RemoteNode initialized')
 
 
-	class __procedures:
+# 	def call(self, method, headers = {}, additions = {}):
+# 		log_print(extent=10, message='RemoteNode.call method started..')
+# 		log_print(extent=10, message=f'calling {method} request')
 
-		def __init__(self, node):
-			log_print(extent=20, message='downloading remote procedures..')
-			self.node = node 
-			self.available_procedures = node.call('procedures')
-			log_print(extent=20, message='remote procedures downloaded')
-			log_print(extent=20, message='adding remote procedures to local class..')
+# 		response = ARPCP.call(self.remote_host, self.remote_port, method, headers, additions)
+# 		log_print(extent=10,message='RemoteNode.call method finished')
 
-			for procedure in self.available_procedures:
-				# add sync procedure to <RemoteNodeInstance>.procedures
-				sync_procedure = (lambda __self, *__args, __remote_procedure=procedure, **__kwargs:
-					self.node.call(
-						'task',
-						{
-							'remote_procedure': __remote_procedure,
-							'remote_procedure_args': __args,
-							# 'remote_procedure_kwargs': __kwargs
-						},
-						additions = __kwargs['additions'] if 'additions' in __kwargs.keys() else {},
-					))
-				setattr(self, procedure, types.MethodType( sync_procedure, self ) )
-
-				# add async procedure to <RemoteNodeInstance>.procedures
-				async_procedure = (lambda __self, *__args, __remote_procedure=procedure, **__kwargs:
-					self.node.call(
-						'atask',
-						{
-							'remote_procedure': __remote_procedure,
-							'remote_procedure_args': __args,
-							# 'remote_procedure_kwargs': __kwargs,
-						},
-						additions = __kwargs['additions'] if 'additions' in __kwargs.keys() else {},
-					))
-
-				setattr(self, 'async_' + procedure, types.MethodType( async_procedure, self ) )
-
-				log_print(extent=20, message=f'remote procedure "{procedure}" added')
+# 		if response['code'] is 100:
+# 			return response['data']
+# 		else:
+# 			raise ARPCPException(response['code'], response['description'])
 
 
-		def __repr__(self):
-			return str(self.available_procedures)
+# 	class __procedures:
+
+# 		def __init__(self, node):
+# 			log_print(extent=20, message='downloading remote procedures..')
+# 			self.node = node 
+# 			self.available_procedures = node.call('procedures')
+# 			log_print(extent=20, message='remote procedures downloaded')
+# 			log_print(extent=20, message='adding remote procedures to local class..')
+
+# 			for procedure in self.available_procedures:
+# 				# add sync procedure to <RemoteNodeInstance>.procedures
+# 				sync_procedure = (lambda __self, *__args, __remote_procedure=procedure, **__kwargs:
+# 					self.node.call(
+# 						'task',
+# 						{
+# 							'remote_procedure': __remote_procedure,
+# 							'remote_procedure_args': __args,
+# 							# 'remote_procedure_kwargs': __kwargs
+# 						},
+# 						additions = __kwargs['additions'] if 'additions' in __kwargs.keys() else {},
+# 					))
+# 				setattr(self, procedure, types.MethodType( sync_procedure, self ) )
+
+# 				# add async procedure to <RemoteNodeInstance>.procedures
+# 				async_procedure = (lambda __self, *__args, __remote_procedure=procedure, **__kwargs:
+# 					self.node.call(
+# 						'atask',
+# 						{
+# 							'remote_procedure': __remote_procedure,
+# 							'remote_procedure_args': __args,
+# 							# 'remote_procedure_kwargs': __kwargs,
+# 						},
+# 						additions = __kwargs['additions'] if 'additions' in __kwargs.keys() else {},
+# 					))
+
+# 				setattr(self, 'async_' + procedure, types.MethodType( async_procedure, self ) )
+
+# 				log_print(extent=20, message=f'remote procedure "{procedure}" added')
+
+
+# 		def __repr__(self):
+# 			return str(self.available_procedures)
 
 # ==============================================================================
 
