@@ -1,0 +1,14 @@
+[Unit]
+Description=arpcp server
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/arpcp
+
+StandardOutput=append:/var/log/arpcp/arpcp.log
+StandardError=append:/var/log/arpcp/arpcp.log
+
+User=root
+Group=root
+
+ExecStart=/usr/bin/python3 -B -u /srv/arpcp/arpcp.py

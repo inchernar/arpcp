@@ -56,11 +56,11 @@ git merge master
 Выполнить команду
 
 ```shell
-python3 -B -m pytest -v -l --cov=arpcp ./tests/tests.py
+python3 -B -m pytest -v -l --cov=arpcp ./tests.py
 ```
 
 Для вывода логов тестируемых функций нужно добавить параметр `-s`:
 
 ```shell
-python3 -B -m pytest -v -l -s --cov=arpcp ./tests/tests.py
+python3 -B -m pytest -v -l -s --cov=arpcp ./tests.py
 ```
