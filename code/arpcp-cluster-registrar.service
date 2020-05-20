@@ -1,0 +1,14 @@
+[Unit]
+Description=registrar for arpcp agents in cluster
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/arpcp
+
+StandardOutput=append:/var/log/arpcp/arpcp-cluster-registrar.log
+StandardError=append:/var/log/arpcp/arpcp-cluster-registrar.log
+
+User=root
+Group=root
+
+ExecStart=/usr/bin/python3 -B -u /srv/arpcp/arpcp-cluster-registrar.py

@@ -1,0 +1,14 @@
+[Unit]
+Description=cluster statistic calculator
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/arpcp
+
+StandardOutput=append:/var/log/arpcp/arpcp-cluster-statistician.log
+StandardError=append:/var/log/arpcp/arpcp-cluster-statistician.log
+
+User=root
+Group=root
+
+ExecStart=/usr/bin/python3 -B -u /srv/arpcp/arpcp-cluster-statistician.py
