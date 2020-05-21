@@ -34,11 +34,13 @@ do
 done
 systemctl daemon-reload
 
-printstep "removing symlink for webapp.nginx.conf"
+printstep "stoping nginx"
 systemctl stop nginx
+printstep "removing symlink for webapp.nginx.conf"
 rm /etc/nginx/sites-enabled/webapp.nginx.conf
-printstep "removing symlink for webapp.uwsgi.ini"
+printstep "stoping uwsgi"
 systemctl stop uwsgi
+printstep "removing symlink for webapp.uwsgi.ini"
 rm /etc/uwsgi/apps-enabled/webapp.uwsgi.ini
 
 ./agent_uninstall.sh

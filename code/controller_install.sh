@@ -78,20 +78,15 @@ do
 done
 systemctl daemon-reload
 
+systemctl stop nginx
+systemctl stop uwsgi
 printstep "removing default symlink for default [nginx]"
 rm /etc/nginx/sites-enabled/default
 printstep "creating symlink for webapp.nginx.conf"
 ln -s $ARPCP_DIR/webapp.nginx.conf /etc/nginx/sites-enabled/webapp.nginx.conf
+printstep "starting nginx"
+systemctl start nginx
 printstep "creating symlink for webapp.uwsgi.ini"
 ln -s $ARPCP_DIR/webapp.uwsgi.ini /etc/uwsgi/apps-enabled/webapp.uwsgi.ini
-services=(
-	nginx
-	uwsgi
-)
-for service in ${services[@]}
-do
-	systemctl stop $service
-	printstep "starting $service"
-	systemctl start $service
-done
-
+printstep "starting uwsgi"
+systemctl start uwsgi

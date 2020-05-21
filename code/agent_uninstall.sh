@@ -37,9 +37,11 @@ systemctl daemon-reload
 printstep "removing $ARPCP_DIR directory"
 rm -r $ARPCP_DIR 2>/dev/null
 
+printstep "removing $LOG_DIR directory"
+rm -r $LOG_DIR
+
 printstep "removing $ARPCP_USER user"
 userdel -fr $ARPCP_USER 2>/dev/null
 
-
-printstep "removing $LOG_DIR directory"
-rm -r $LOG_DIR
+printstep "clearing REDIS from ARPCP:*"
+redis-cli --scan --pattern "ARPCP:*" | xargs redis-cli del

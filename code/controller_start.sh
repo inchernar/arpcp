@@ -18,38 +18,12 @@ printstep(){
 # ======================================
 
 ARPCP_DIR=/srv/arpcp
-ARPCP_USER=arpcp-user
 LOG_DIR=/var/log/arpcp
 
-packages=(
-	redis
-	python3
-	python3-pip
-)
-for package in ${packages[@]}
-do
-	printstep "installing $package"
-	apt install -y $package 2>/dev/null
-done
-
-pymodules=(
-	PyYAML==5.3
-	redis==3.4.1
-	setproctitle==1.1.10
-)
-for pymodule in ${pymodules[@]}
-do
-	printstep "installing $pymodule python module"
-	pip3 install $pymodule
-done
-
-printstep "creating $ARPCP_USER user"
-useradd -M -s /bin/bash $ARPCP_USER
-
+### START
+printstep "====== START ======"
 printstep "creating $ARPCP_DIR directory"
 mkdir -m 755 -p $ARPCP_DIR
-printstep "setting $ARPCP_USER as owner"
-chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR
 
 files=(
 	arpcp.py
@@ -57,21 +31,28 @@ files=(
 	arpcp.conf.yml
 	procedures.py
 	callbacks.py
+	arpcp-cluster-registrar.py
+	arpcp-cluster-registrar.service
+	arpcp-cluster-statistician.py
+	arpcp-cluster-statistician.service
+	static
+	webapp.py
+	webapp.nginx.conf
+	webapp.uwsgi.ini
 )
 for file in ${files[@]}
 do
-	printstep "copying $file"
-	cp $file $ARPCP_DIR/$file
-	chmod 777 $ARPCP_DIR/$file
-	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$file
+	printstep "linking $file"
+	ln -s -r $file $ARPCP_DIR
 done
 
 printstep "creating $LOG_DIR directory"
 mkdir -m 755 -p $LOG_DIR
-chown -R $ARPCP_USER:$ARPCP_USER $LOG_DIR
 
 daemons=(
 	arpcp
+	arpcp-cluster-registrar
+	arpcp-cluster-statistician
 )
 for daemon in ${daemons[@]}
 do
@@ -82,12 +63,12 @@ do
 	systemctl start $daemon
 done
 
-services=(
-	redis
-)
-for service in ${services[@]}
-do
-	printstep "enabling & starting $service"
-	# systemctl enable $daemon
-	systemctl start $service
-done
+printstep "creating symlink for webapp.nginx.conf"
+ln -s $ARPCP_DIR/webapp.nginx.conf /etc/nginx/sites-enabled/webapp.nginx.conf
+printstep "starting nginx"
+systemctl start nginx
+
+printstep "creating symlink for webapp.uwsgi.ini"
+ln -s $ARPCP_DIR/webapp.uwsgi.ini /etc/uwsgi/apps-enabled/webapp.uwsgi.ini
+printstep "starting uwsgi"
+systemctl start uwsgi
