@@ -10,11 +10,10 @@ printstep(){
 
 ARPCP_DIR=/srv/arpcp
 ARPCP_USER=arpcp-user
+LOG_DIR=/var/log/arpcp
 
 services=(
 	arpcp
-	arpcp-cluster-registrar
-	arpcp-cluster-statistician
 )
 for service in ${services[@]}
 do
@@ -26,18 +25,12 @@ do
 done
 systemctl daemon-reload
 
-printstep "removing symlink for webapp.nginx.conf"
-rm /etc/nginx/sites-enabled/webapp.nginx.conf
-
-printstep "removing symlink for webapp.uwsgi.ini"
-rm /etc/uwsgi/apps-enabled/webapp.uwsgi.ini
-
-printstep "removing $ARPCP_DIR folder"
+printstep "removing $ARPCP_DIR directory"
 rm -r $ARPCP_DIR 2>/dev/null
 
 printstep "removing $ARPCP_USER user"
 userdel -fr $ARPCP_USER 2>/dev/null
 
-LOG_FOLDER=/var/log/arpcp
-printstep "removing $LOG_FOLDER folder"
-rm -r $LOG_FOLDER
+
+printstep "removing $LOG_DIR directory"
+rm -r $LOG_DIR
