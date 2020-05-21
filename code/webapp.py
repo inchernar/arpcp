@@ -4,13 +4,13 @@ from flask import Flask, render_template, jsonify
 
 webapp = Flask(
 	__name__,
-	template_folder = "webapp/templates",
-	static_folder = "webapp/static"
+	template_folder = "templates",
+	static_folder = "static"
 )
 
 @webapp.route('/', methods = ['GET'])
 def index():
-	return open('./webapp/static/index.html').read()
+	return webapp.send_static_file('index.html')
 
 # @webapp.route('/agent_info', methods = ['GET'])
 # def agent_info():

@@ -9,11 +9,11 @@
 # # Cyan         0;36     Light Cyan    1;36
 # # Light Gray   0;37     White         1;37
 
-# printstep(){
-# 	BLUE='\033[1;34m'
-# 	NC='\033[0m' # No Color
-# 	echo -e "${BLUE}===> $1 <===${NC}"
-# }
+printstep(){
+	BLUE='\033[1;34m'
+	NC='\033[0m' # No Color
+	echo -e "${BLUE}===> $1 <===${NC}"
+}
 
 # # ======================================
 
@@ -23,6 +23,7 @@ ARPCP_USER=arpcp-user
 ./agent_install.sh
 
 packages=(
+	nmap
 	nginx
 	uwsgi
 	uwsgi-plugin-python3
@@ -50,7 +51,7 @@ files=(
 	arpcp-cluster-registrar.service
 	arpcp-cluster-statistician.py
 	arpcp-cluster-statistician.service
-	webapp
+	static
 	webapp.py
 	webapp.nginx.conf
 	webapp.uwsgi.ini
@@ -59,8 +60,8 @@ for file in ${files[@]}
 do
 	printstep "copying $file"
 	cp -r $file $ARPCP_DIR/$file
-	chmod 777 $ARPCP_DIR/$file
-	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$file
+	chmod -R 777 $ARPCP_DIR/$file
+	chown -R $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$file
 done
 
 daemons=(
@@ -75,7 +76,10 @@ do
 	# systemctl enable $daemon
 	systemctl start $daemon
 done
+systemctl daemon-reload
 
+printstep "removing default symlink for default [nginx]"
+rm /etc/nginx/sites-enabled/default
 printstep "creating symlink for webapp.nginx.conf"
 ln -s $ARPCP_DIR/webapp.nginx.conf /etc/nginx/sites-enabled/webapp.nginx.conf
 printstep "creating symlink for webapp.uwsgi.ini"
@@ -86,7 +90,8 @@ services=(
 )
 for service in ${services[@]}
 do
-	printstep "restarting $service"
-	systemctl restart $service
+	systemctl stop $service
+	printstep "starting $service"
+	systemctl start $service
 done
 

@@ -90,10 +90,10 @@ function render_topology_graph(){
 
 	node.append("svg:image")
 		.attr("xlink:href", function(d){
-			if(d.controller){return "images/controller.svg"}
+			if(d.controller){return "/static/images/controller.svg"}
 			else{
-				if(d.on){return "images/agent_on.svg"}
-				else{return "images/agent_off.svg"}
+				if(d.on){return "/static/images/agent_on.svg"}
+				else{return "/static/images/agent_off.svg"}
 			}
 		})
 		.attr("x", 0)
