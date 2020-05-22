@@ -81,6 +81,11 @@ def remove_from_blacklist():
 		return '',200
 	return '',400
 
+@webapp.route('/rpc', methods = ['POST'])
+def rpc():
+	pass
+
+
 if __name__ == '__main__':
 	webapp.debug = True
 	webapp.run()

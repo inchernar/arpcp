@@ -1,154 +1,163 @@
-function choose_node(d){
-	console.log(d);
-	let content = "mac: " + d.mac + "\nip: " + d.ip + "\n";
-	if(d.controller){
-		content += "CONTROLLER"
-	}
-	else{
-		content += "AGENT"
-	}
-	let node_control = document.querySelector("#node-controls");
-	node_control.innerText = content;
-}
-
 function render_topology_graph(){
-	drag = simulation => {
-	function dragstarted(d) {
-		if (!d3.event.active) simulation.alphaTarget(0.3).restart();
-		d.fx = d.x;
-		d.fy = d.y;
-	}
-	function dragged(d) {
-		d.fx = d3.event.x;
-		d.fy = d3.event.y;
-	}
-	function dragended(d) {
-		if (!d3.event.active) simulation.alphaTarget(0);
-		d.fx = null;
-		d.fy = null;
-	}
-	return d3.drag()
-		.on("start", dragstarted)
-		.on("drag", dragged)
-		.on("end", dragended);
-	}
+	axios.get('/agents_info')
+	.then(function (response) {
+		console.log(response['data']);
 
-	viewBoxWidth = '1200';
-	viewBoxHeight = '750';
-	nodeWidth = 120;
-	nodeHeight = 1.3 * nodeWidth;
-	nodeRadius = nodeWidth / 5;
-	distance = 10000;
+		let nodes = response['data'];
+		nodes.push({mac: '00:00:00:00:00:00', ip: '0.0.0.0', disable_counter: 0})
 
-	const links = [
-		{source: '8c:16:45:4d:23:bc', target: '8c:00:00:00:00:01'},
-		{source: '8c:16:45:4d:23:bc', target: '8c:00:00:00:00:02'},
-		{source: '8c:16:45:4d:23:bc', target: '8c:00:00:00:00:03'},
-		{source: '8c:16:45:4d:23:bc', target: '8c:00:00:00:00:04'},
-		{source: '8c:16:45:4d:23:bc', target: '8c:00:00:00:00:05'},
-		{source: '8c:16:45:4d:23:bc', target: '8c:00:00:00:00:06'},
-		{source: '8c:16:45:4d:23:bc', target: '8c:00:00:00:00:07'}
-	];
-	const nodes = [
-		{mac: '8c:16:45:4d:23:bc', ip: '192.168.1.10', on: true, controller: true},
-		{mac: '8c:00:00:00:00:01', ip: '192.168.1.101', on: true, controller: false},
-		{mac: '8c:00:00:00:00:02', ip: '192.168.1.102', on: true, controller: false},
-		{mac: '8c:00:00:00:00:03', ip: '192.168.1.103', on: false, controller: false},
-		{mac: '8c:00:00:00:00:04', ip: '192.168.1.104', on: true, controller: false},
-		{mac: '8c:00:00:00:00:05', ip: '192.168.1.104', on: false, controller: false},
-		{mac: '8c:00:00:00:00:06', ip: '192.168.1.104', on: true, controller: false},
-		{mac: '8c:00:00:00:00:07', ip: '192.168.1.104', on: false, controller: false}
-	];
+		let links = []
+		for(let i = 0; i < nodes.length; i++){
+			links.push({source: '00:00:00:00:00:00', target: nodes[i]['mac']})
+		}
 
-	const simulation = d3.forceSimulation(nodes)
-		.force("link", d3.forceLink(links).id(d => d.mac))
-		.force("charge", d3.forceManyBody().strength(-distance))
-		.force("center", d3.forceCenter(viewBoxWidth / 2, viewBoxHeight / 2));
+		drag = simulation => {
+		function dragstarted(d) {
+			if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+			d.fx = d.x;
+			d.fy = d.y;
+		}
+		function dragged(d) {
+			d.fx = d3.event.x;
+			d.fy = d3.event.y;
+		}
+		function dragended(d) {
+			if (!d3.event.active) simulation.alphaTarget(0);
+			d.fx = null;
+			d.fy = null;
+		}
+		return d3.drag()
+			.on("start", dragstarted)
+			.on("drag", dragged)
+			.on("end", dragended);
+		}
 
-	const graph = d3.select('#topology-graph');
+		viewBoxWidth = '1200';
+		viewBoxHeight = '750';
+		nodeWidth = 120;
+		nodeHeight = 1.3 * nodeWidth;
+		nodeRadius = nodeWidth / 5;
+		distance = 10000;
 
-	const svg = graph.append("svg")
-		.attr("viewBox", [0, 0, viewBoxWidth, viewBoxHeight]);
+		const simulation = d3.forceSimulation(nodes)
+			.force("link", d3.forceLink(links).id(d => d.mac))
+			.force("charge", d3.forceManyBody().strength(-distance))
+			.force("center", d3.forceCenter(viewBoxWidth / 2, viewBoxHeight / 2));
 
-	const link = svg.append("g")
-		.attr("stroke", "rgb(30, 30, 180)")
-		.attr("stroke-opacity", 0.3)
-		.attr("stroke-dasharray", "10 10")
-		.attr("stroke-width", "2")
-	.selectAll("line")
-	.data(links)
-	.join("line");
+		const graph = d3.select('#topology-graph');
 
-	const node = svg.append("g")
-	.selectAll("g")
-	.data(nodes)
-	.join("svg")
-		.attr("width", nodeWidth)
-		.attr("height", nodeHeight)
-		.on("click", d => choose_node(d))
-		.call(drag(simulation));
+		const svg = graph.append("svg")
+			.attr("viewBox", [0, 0, viewBoxWidth, viewBoxHeight]);
 
-	node.append("svg:image")
-		.attr("xlink:href", function(d){
-			if(d.controller){return "images/controller.svg"}
-			else{
-				if(d.on){return "images/agent_on.svg"}
-				else{return "images/agent_off.svg"}
+		const link = svg.append("g")
+			.attr("stroke", "rgb(30, 30, 180)")
+			.attr("stroke-opacity", 0.3)
+			.attr("stroke-dasharray", "10 10")
+			.attr("stroke-width", "2")
+		.selectAll("line")
+		.data(links)
+		.join("line");
+
+		function choose_node(d){
+			console.log(d);
+			let content = "mac: " + d.mac + "\nip: " + d.ip + "\n";
+			if(d.controller){
+				content += "CONTROLLER"
 			}
-		})
-		.attr("x", 0)
-		.attr("y", d=> {
-			if (d.controller) return -0.1*nodeHeight;
-			else return -0.2*nodeHeight;
-		})
-		.attr("width", nodeWidth)
-		.attr("height", nodeHeight);
+			else{
+				content += "AGENT"
+			}
+			let node_control = document.querySelector("#node-controls");
+			node_control.innerText = content;
+		}
 
-	node.append("text")
-		.text(d => d.ip)
-		.attr("x", 0)
-		.attr("y", d => {
-			if(d.controller) return nodeWidth + 20
-			else return nodeWidth
-		})
-		.attr("font-size", "9pt")
-		.attr("font-family", "monospace");
+		const node = svg.append("g")
+		.selectAll("g")
+		.data(nodes)
+		.join("svg")
+			.attr("width", nodeWidth)
+			.attr("height", nodeHeight)
+			.on("click", d => choose_node(d))
+			.call(drag(simulation));
 
-	node.append("text")
-		.text(d => {
-			if(!d.controller) return d.mac
-		})
-		.attr("x", 0)
-		.attr("y", nodeWidth + 14)
-		.attr("font-size", "9pt")
-		.attr("font-family", "monospace");
+		node.append("svg:image")
+			.attr("xlink:href", function(d){
+				if(d.mac == "00:00:00:00:00:00"){return "/static/images/controller.svg"}
+				else{
+					if(d.disable_counter < 1){return "/static/images/agent_on.svg"}
+					else{return "/static/images/agent_off.svg"}
+				}
+			})
+			.attr("x", 0)
+			.attr("y", d=> {
+				if (d.mac == "00:00:00:00:00:00") return -0.1*nodeHeight;
+				else return -0.2*nodeHeight;
+			})
+			.attr("width", nodeWidth)
+			.attr("height", nodeHeight);
 
-	node.append("title")
-		.attr("x", 0)
-		.attr("y", 0)
-		.text(d => {
-			return "mac: " + d.mac + "\nip: " + d.ip
-		})
-		.attr("fill", "black")
-		.attr("stroke", "black")
-		.attr("stroke-width", 3);
+		// ip
+		node.append("text")
+			.text(d => {
+				if(d.mac != "00:00:00:00:00:00") return d.ip
+			})
+			.attr("x", 0)
+			.attr("y", d => {
+				if(d.mac == "00:00:00:00:00:00") return nodeWidth + 20
+				else return nodeWidth
+			})
+			.attr("font-size", "9pt")
+			.attr("font-family", "monospace");
 
-	simulation.on("tick", () => {
-	link
-		.attr("x1", d => d.source.x)
-		.attr("y1", d => d.source.y)
-		.attr("x2", d => d.target.x)
-		.attr("y2", d => d.target.y);
+		// mac
+		node.append("text")
+			.text(d => {
+				if(d.mac != "00:00:00:00:00:00") return d.mac
+				else return 'controller'
+			})
+			.attr("x", 0)
+			.attr("y", nodeWidth + 14)
+			.attr("font-size", "9pt")
+			.attr("font-family", "monospace");
 
-	node
-		.attr("x", d => d.x - nodeWidth / 2)
-		.attr("y", d => d.y - nodeHeight / 2);
+		node.append("title")
+			.attr("x", 0)
+			.attr("y", 0)
+			.text(d => {
+				return "ip: " + d.ip + "\nmac: " + d.mac + "\ndc: " + d.disable_counter
+			})
+			.attr("fill", "black")
+			.attr("stroke", "black")
+			.attr("stroke-width", 3);
+
+		simulation.on("tick", () => {
+		link
+			.attr("x1", d => d.source.x)
+			.attr("y1", d => d.source.y)
+			.attr("x2", d => d.target.x)
+			.attr("y2", d => d.target.y);
+
+		node
+			.attr("x", d => d.x - nodeWidth / 2)
+			.attr("y", d => d.y - nodeHeight / 2);
+		});
+
+		// simulation.stop();
+		// return svg.node();
+	})
+	.catch(function (error) {
+		console.log(error);
+	})
+	.then(function () {
+		// always executed
 	});
-
-	// simulation.stop();
-
-	// return svg.node();
 }
+
+
+
+
+
+
 
 function create_viewBox(p_data){
 
@@ -314,6 +323,9 @@ function update_data(p_data){
 
 
 window.onload = function(){
+
+
+
 	render_topology_graph();
 	exmp1 = generate_data1();
 	exmp2 = generate_data2();

@@ -80,6 +80,7 @@ printstep "copying static folder internal files"
 static_files=(
 	static/index.html
 	static/js/d3.v5.js
+	static/js/axios.js
 	static/js/main.js
 	static/css/style.css
 	static/images/agent_off.svg
