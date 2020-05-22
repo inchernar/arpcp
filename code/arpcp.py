@@ -1222,25 +1222,25 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 
 	@staticmethod
 	def agent_info(agent):
-		_agent_info = {}
 		_redis = ARPCP.redis()
-		_agent_info["mac"] = agent
+		if agent in Controller.agents():
+			_agent_info = {}
+			_agent_info["mac"] = agent
+			_agent_info["ip"] = None
+			if _redis.exists(f"ARPCP:agent:{agent}:ip"):
+				_agent_info["ip"] = _redis.get(f"ARPCP:agent:{agent}:ip")
 
-		_agent_info["ip"] = None
-		if _redis.exists(f"ARPCP:agent:{agent}:ip"):
-			_agent_info["ip"] = _redis.get(f"ARPCP:agent:{agent}:ip")
+			_agent_info["disable_counter"] = CONFIG["controller"]["max_dc"]
+			if _redis.exists(f"ARPCP:agent:{agent}:disable_counter"):
+				_agent_info["disable_counter"] = json.loads(_redis.get(f"ARPCP:agent:{agent}:disable_counter"))
 
-		_agent_info["disable_counter"] = CONFIG["controller"]["max_dc"]
-		if _redis.exists(f"ARPCP:agent:{agent}:disable_counter"):
-			_agent_info["disable_counter"] = json.loads(_redis.get(f"ARPCP:agent:{agent}:disable_counter"))
-
-		tasks = []
-		if _redis.exists("ARPCP:tasks:assign"):
-			tasks = json.loads(_redis.get("ARPCP:tasks:assign"))
-		agent_tasks = [task for task in tasks if task.startswith(f"_{agent}_")]
-		_agent_info["tasks"] = agent_tasks
-
-		return _agent_info
+			tasks = []
+			if _redis.exists("ARPCP:tasks:assign"):
+				tasks = json.loads(_redis.get("ARPCP:tasks:assign"))
+			agent_tasks = [task for task in tasks if task.startswith(f"_{agent}_")]
+			_agent_info["tasks"] = agent_tasks
+			return _agent_info
+		return None
 
 	@staticmethod
 	def agents_info():
@@ -1296,30 +1296,30 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 	@staticmethod
 	def task_info(task):
 		_redis = ARPCP.redis()
-		_task_info = {}
-		_task_info["task_id"] = task
-		_task_info["agent"] = task.split("_")[1]
+		if task in Controller.tasks():
+			_task_info = {}
+			_task_info["task_id"] = task
+			_task_info["agent"] = task.split("_")[1]
+			_task_info["status"] = None
+			if _redis.exists(f"ARPCP:task:{task}:status"):
+				_task_info["status"] = _redis.get(f"ARPCP:task:{task}:status")
 
-		_task_info["status"] = None
-		if _redis.exists(f"ARPCP:task:{task}:status"):
-			_task_info["status"] = _redis.get(f"ARPCP:task:{task}:status")
+			_task_info["procedure"] = None
+			_task_info["args"] = None
+			if _redis.exists(f"ARPCP:task:{task}:message"):
+				_message = json.loads(_redis.get(f"ARPCP:task:{task}:message"))
+				_task_info["procedure"] = _message["remote_procedure"]
+				_task_info["args"] = _message["remote_procedure_args"]
 
-		_task_info["procedure"] = None
-		_task_info["args"] = None
-		if _redis.exists(f"ARPCP:task:{task}:message"):
-			_message = json.loads(_redis.get(f"ARPCP:task:{task}:message"))
-			_task_info["procedure"] = _message["remote_procedure"]
-			_task_info["args"] = _message["remote_procedure_args"]
+			_task_info["callback"] = None
+			if _redis.exists(f"ARPCP:task:{task}:callback"):
+				_task_info["callback"] = _redis.get(f"ARPCP:task:{task}:callback")
 
-		_task_info["callback"] = None
-		if _redis.exists(f"ARPCP:task:{task}:callback"):
-			_task_info["callback"] = _redis.get(f"ARPCP:task:{task}:callback")
-
-		_task_info["result"] = None
-		if _redis.exists(f"ARPCP:task:{task}:result"):
-			_task_info["result"] = json.loads(_redis.get(f"ARPCP:task:{task}:result"))
-
-		return _task_info
+			_task_info["result"] = None
+			if _redis.exists(f"ARPCP:task:{task}:result"):
+				_task_info["result"] = json.loads(_redis.get(f"ARPCP:task:{task}:result"))
+			return _task_info
+		return None
 
 	@staticmethod
 	def tasks_info():
