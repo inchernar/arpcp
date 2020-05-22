@@ -35,7 +35,6 @@ files=(
 	arpcp-cluster-registrar.service
 	arpcp-cluster-statistician.py
 	arpcp-cluster-statistician.service
-	static
 	webapp.py
 	webapp.nginx.conf
 	webapp.uwsgi.ini
@@ -43,8 +42,21 @@ files=(
 for file in ${files[@]}
 do
 	printstep "linking $file"
-	ln -s -r $file $ARPCP_DIR
+	ln -s $PWD/$file $ARPCP_DIR/$file
 done
+
+printstep "linking static folder"
+mkdir -p $ARPCP_DIR/static
+ln -s $PWD/static/index.html $ARPCP_DIR/static/index.html
+mkdir -p $ARPCP_DIR/static/js
+ln -s $PWD/static/js/d3.v5.js $ARPCP_DIR/static/js/d3.v5.js
+ln -s $PWD/static/js/main.js $ARPCP_DIR/static/js/main.js
+mkdir -p $ARPCP_DIR/static/css
+ln -s $PWD/static/css/style.css $ARPCP_DIR/static/css/style.css
+mkdir -p $ARPCP_DIR/static/images
+ln -s $PWD/static/images/agent_off.svg $ARPCP_DIR/static/images/agent_off.svg
+ln -s $PWD/static/images/agent_on.svg $ARPCP_DIR/static/images/agent_on.svg
+ln -s $PWD/static/images/controller.svg $ARPCP_DIR/static/images/controller.svg
 
 printstep "creating $LOG_DIR directory"
 mkdir -m 755 -p $LOG_DIR

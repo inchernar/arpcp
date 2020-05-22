@@ -10,6 +10,8 @@ webapp = Flask(
 
 @webapp.route('/', methods = ['GET'])
 def index():
+	# with open('/srv/arpcp/static/index.html') as index:
+		# return str(index.read())
 	return webapp.send_static_file('index.html')
 
 # @webapp.route('/agent_info', methods = ['GET'])
@@ -44,3 +46,7 @@ def procedures():
 @webapp.route('/callbacks', methods = ['GET'])
 def callbacks():
 	return jsonify(arpcp.Controller.callbacks())
+
+if __name__ == '__main__':
+	webapp.debug = True
+	webapp.run()

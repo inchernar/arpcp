@@ -62,7 +62,7 @@ for file in ${files[@]}
 do
 	printstep "copying $file"
 	cp $file $ARPCP_DIR/$file
-	chmod 777 $ARPCP_DIR/$file
+	chmod 644 $ARPCP_DIR/$file
 	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$file
 done
 

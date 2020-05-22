@@ -51,7 +51,6 @@ files=(
 	arpcp-cluster-registrar.service
 	arpcp-cluster-statistician.py
 	arpcp-cluster-statistician.service
-	static
 	webapp.py
 	webapp.nginx.conf
 	webapp.uwsgi.ini
@@ -59,9 +58,39 @@ files=(
 for file in ${files[@]}
 do
 	printstep "copying $file"
-	cp -r $file $ARPCP_DIR/$file
-	chmod -R 777 $ARPCP_DIR/$file
-	chown -R $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$file
+	cp $file $ARPCP_DIR/$file
+	chmod 644 $ARPCP_DIR/$file
+	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$file
+done
+
+printstep "copying static folder & subfolders"
+static_folders=(
+	static
+	static/js
+	static/css
+	static/images
+)
+for static_folder in ${static_folders[@]}
+do
+	mkdir -p -m 755 $ARPCP_DIR/$static_folder
+	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$static_folder
+done
+
+printstep "copying static folder internal files"
+static_files=(
+	static/index.html
+	static/js/d3.v5.js
+	static/js/main.js
+	static/css/style.css
+	static/images/agent_off.svg
+	static/images/agent_on.svg
+	static/images/controller.svg
+)
+for static_file in ${static_files[@]}
+do
+	cp $PWD/$static_file $ARPCP_DIR/$static_file
+	chmod 644 $ARPCP_DIR/$static_file
+	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$static_file
 done
 
 daemons=(
