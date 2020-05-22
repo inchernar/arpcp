@@ -78,7 +78,34 @@ body{
 	color: red;
 }
 
-.green_on_black{
+.task_id{
+	margin: 0;
+	padding: 0;
+	width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.task_mac{
+	margin: 0;
+	padding: 0;
+	width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.task_option{
+	margin: 0;
+	padding: 0;
+	width: 80px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.green_on_black_cmd{
 	position: relative;
 	color: lightgreen;
 	font-family: monospace;
@@ -90,7 +117,26 @@ body{
 	padding-left: 10px;
 	padding-right: 10px;
 	left: -10px;
-	width: calc(100% + 20px);
+	width: calc(100% + 0px);
+}
+
+.green_on_black_result{
+	position: relative;
+	color: lightgreen;
+	font-family: monospace;
+	background: black;
+	font-size: 16px;
+	/*margin-top: 10px;*/
+	padding-top: 5px;
+	padding-bottom: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	left: -10px;
+	width: calc(100% + 0px);
+	height: 285px;
+	border-bottom-left-radius: 10px;
+	border-bottom-right-radius: 10px;
+	overflow: scroll;
 }
 
 #agent-info:before{
@@ -108,7 +154,7 @@ body{
 	border-radius: 10px;
 	left: 835px;
 	width: 312px;
-	height: 380px;
+	height: 500px;
 	padding: 10px;
 }
 
@@ -127,7 +173,7 @@ body{
 	border-radius: 10px;
 	left: 1174px;
 	width: 312px;
-	height: 380px;
+	height: 500px;
 	padding: 10px;
 }
 
@@ -144,7 +190,7 @@ body{
 	border-radius: 10px;
 	left: 1513px;
 	width: 377px;
-	height: 380px;
+	height: 500px;
 	padding: 10px;
 }
 
@@ -159,9 +205,18 @@ body{
 	overflow-y: scroll;
 	background-color: white;
 	border-radius: 10px;
-	top: 415px;
+	top: 535px;
 	left: 835px;
 	width: 1055px;
-	height: 500px;
+	height: 380px;
 	padding: 10px;
+}
+
+#arg_count_increaser{
+	/*border: 1px solid black;*/
+	width: 15px;
+	height: 15px;
+	border-radius: 2px;
+	color: blue;
+	background-color: rgb(160, 250, 160);
 }

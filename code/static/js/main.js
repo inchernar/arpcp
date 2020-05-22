@@ -235,9 +235,9 @@ function render_task_table(task){
 		_tmp_task_info += '<div>task: <b>' + task + '</b></div>';
 		_tmp_task_info += '<br><div>agent: <b>' + _task_info['agent'] + '</b></div>';
 		_tmp_task_info += '<br><div>command:</div>';
-		_tmp_task_info += '<div class="green_on_black">>>> ' + _task_info['callback'] + '('+ _task_info['procedure'] + '(' + _task_info['args'] + '))</div>'
+		_tmp_task_info += '<div class="green_on_black_cmd">>>> ' + _task_info['callback'] + '('+ _task_info['procedure'] + '(' + _task_info['args'] + '))</div>'
 		_tmp_task_info += '<br><div>result:</div>';
-		_tmp_task_info += '<div class="green_on_black">' + _task_info['result'] + '</div>'
+		_tmp_task_info += '<div class="green_on_black_result">' + _task_info['result'] + '</div>'
 		task_info.innerHTML = _tmp_task_info;
 		//
 	})
@@ -274,13 +274,13 @@ function render_tasks_table(){
 		for(let i = 0; i < _tasks_info.length; i++){
 			_tmp_tasks_table += '<tr onclick="render_task_table(\'' + _tasks_info[i]['task_id'] + '\')"' +
 			'id="task-' + _tasks_info[i]['task_id'] + '">' +
-			'<td>' + _tasks_info[i]['task_id'] + '</td>' +
-			'<td>' + _tasks_info[i]['agent'] + '</td>' +
-			'<td>' + _tasks_info[i]['procedure'] + '</td>' +
-			'<td>' + String(_tasks_info[i]['args']) + '</td>' +
-			'<td>' + _tasks_info[i]['callback'] + '</td>' +
-			'<td>' + _tasks_info[i]['status'] + '</td>' +
-			'<td>' + _tasks_info[i]['result'] + '</td>' +
+			'<td><p class="task_id">' + _tasks_info[i]['task_id'] + '</p></td>' +
+			'<td><p class="task_mac">' + _tasks_info[i]['agent'] + '</p></td>' +
+			'<td><p class="task_option">' + _tasks_info[i]['procedure'] + '</p></td>' +
+			'<td><p class="task_option">' + String(_tasks_info[i]['args']) + '</p></td>' +
+			'<td><p class="task_option">' + _tasks_info[i]['callback'] + '</p></td>' +
+			'<td><p class="task_option">' + _tasks_info[i]['status'] + '</p></td>' +
+			'<td><p class="task_option">' + _tasks_info[i]['result'] + '</p></td>' +
 			'<td>' + '<button onclick="delete_task(\''+ _tasks_info[i]['task_id'] + '\')">Удалить</button>' + '</td>' +
 			'</tr>'
 		}
