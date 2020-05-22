@@ -1,8 +1,54 @@
+// =============================================================================
+function add_to_blacklist(agent){
+	axios.get('/add_to_blacklist?agent=' + agent)
+	.then(function (response) {
+		//
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
+}
+
+function choose_node(d){
+	// console.log(d);
+	if(d.mac == "00:00:00:00:00:00"){
+		type = "Контроллер"
+	}
+	else{
+		type = "Агент"
+	}
+
+	let content = '<table border=1 style="">' +
+		'<tr><td>Тип</td><td>' + type + '</td></tr>' +
+		'<tr><td>mac</td><td>' + d.mac + '</td></tr>' +
+		'<tr><td>ip</td><td>' + d.ip + '</td></tr>' +
+		'<tr><td>Тики сбоя</td><td>' + d.disable_counter + '/3</td></tr></table>'
+
+	if(d.mac != "00:00:00:00:00:00"){
+		axios.get('/is_in_blacklist?agent=' + d.mac)
+		.then(function (response) {
+			_is_in_blacklist = response['data']
+			if(_is_in_blacklist != 'True'){
+				content += '<button onclick="add_to_blacklist(\'' + d.mac + '\')">Исключить из кластера</button>'
+			}
+			let node_control = document.querySelector("#agent-info");
+			node_control.innerHTML = content;
+		})
+		.catch(function (error) {
+			// handle error
+			console.log(error);
+		})
+	}
+	else{
+		let node_control = document.querySelector("#agent-info");
+		node_control.innerHTML = content;
+	}
+}
+
 function render_topology_graph(){
 	axios.get('/agents_info')
 	.then(function (response) {
-		console.log(response['data']);
-
 		let nodes = response['data'];
 		nodes.push({mac: '00:00:00:00:00:00', ip: '0.0.0.0', disable_counter: 0})
 
@@ -33,7 +79,7 @@ function render_topology_graph(){
 		}
 
 		viewBoxWidth = '1200';
-		viewBoxHeight = '750';
+		viewBoxHeight = '700';
 		nodeWidth = 120;
 		nodeHeight = 1.3 * nodeWidth;
 		nodeRadius = nodeWidth / 5;
@@ -57,19 +103,6 @@ function render_topology_graph(){
 		.selectAll("line")
 		.data(links)
 		.join("line");
-
-		function choose_node(d){
-			console.log(d);
-			let content = "mac: " + d.mac + "\nip: " + d.ip + "\n";
-			if(d.controller){
-				content += "CONTROLLER"
-			}
-			else{
-				content += "AGENT"
-			}
-			let node_control = document.querySelector("#node-controls");
-			node_control.innerText = content;
-		}
 
 		const node = svg.append("g")
 		.selectAll("g")
@@ -151,17 +184,154 @@ function render_topology_graph(){
 	.then(function () {
 		// always executed
 	});
+};
+
+// =============================================================================
+function remove_from_blacklist(agent){
+	axios.get('/remove_from_blacklist?agent=' + agent)
+	.then(function (response) {
+		//
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
 }
 
+function render_blacklist(){
+	axios.get('/blacklist')
+	.then(function (response) {
+		// handle success
+		let _blacklist = response['data'];
+		let blacklist = document.querySelector('#blacklist');
+		_tmp_table = ''
+		_tmp_table = "<table border=1>";
+		for(let i = 0; i < _blacklist.length; i++ ){
+			_tmp_table += "<tr><td><div class='blocked_agent'>" + _blacklist[i] + "</div></td>" +
+				"<td><button onclick=\"remove_from_blacklist('" + _blacklist[i] + "')\">Восстановить</button></td></tr>"
+		}
+		_tmp_table += "</table>"
+		blacklist.innerHTML =_tmp_table
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
+}
+
+// =============================================================================
+
+function clear_task_table(task){
+	let task_info = document.querySelector('#task-info');
+	task_info.innerHTML = ''
+}
+
+function render_task_table(task){
+	axios.get('/task_info?task='+task)
+	.then(function (response) {
+		let task_info = document.querySelector('#task-info');
+		_task_info = response['data'];
+		_tmp_task_info = '';
+		_tmp_task_info += '<div>task: <b>' + task + '</b></div>';
+		_tmp_task_info += '<br><div>agent: <b>' + _task_info['agent'] + '</b></div>';
+		_tmp_task_info += '<br><div>command:</div>';
+		_tmp_task_info += '<div class="green_on_black">>>> ' + _task_info['callback'] + '('+ _task_info['procedure'] + '(' + _task_info['args'] + '))</div>'
+		_tmp_task_info += '<br><div>result:</div>';
+		_tmp_task_info += '<div class="green_on_black">' + _task_info['result'] + '</div>'
+		task_info.innerHTML = _tmp_task_info;
+		//
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
+	// 
+}
+
+function delete_task(task){
+	axios.get('/delete_task?task='+task)
+	.then(function (response) {
+		clear_task_table(task);
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
+	.then(function () {
+		//
+	});
+};
+
+function render_tasks_table(){
+	axios.get('/tasks_info')
+	.then(function (response) {
+		// handle success
+		let _tasks_info = response['data'];
+		let _tasks_table = document.querySelector('#tasks-table');
+		_tasks_table.innerHTML = ''
+		_tmp_tasks_table = '<table border=1 style="position: relative; font-size: 14px">' +
+		'<tr><th>Task ID</th><th>Agent</th><th>Procedure</th><th>Params</th><th>Callback</th><th>Status</th><th>Result</th><th></th></tr>'
+		for(let i = 0; i < _tasks_info.length; i++){
+			_tmp_tasks_table += '<tr onclick="render_task_table(\'' + _tasks_info[i]['task_id'] + '\')"' +
+			'id="task-' + _tasks_info[i]['task_id'] + '">' +
+			'<td>' + _tasks_info[i]['task_id'] + '</td>' +
+			'<td>' + _tasks_info[i]['agent'] + '</td>' +
+			'<td>' + _tasks_info[i]['procedure'] + '</td>' +
+			'<td>' + String(_tasks_info[i]['args']) + '</td>' +
+			'<td>' + _tasks_info[i]['callback'] + '</td>' +
+			'<td>' + _tasks_info[i]['status'] + '</td>' +
+			'<td>' + _tasks_info[i]['result'] + '</td>' +
+			'<td>' + '<button onclick="delete_task(\''+ _tasks_info[i]['task_id'] + '\')">Удалить</button>' + '</td>' +
+			'</tr>'
+		}
+		_tmp_tasks_table += '</table>';
+		_tasks_table.innerHTML = _tmp_tasks_table;
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
+	.then(function () {
+		//
+	});
+};
+
+// =============================================================================
+
+function render_statistic_table(){
+	axios.get('/status_statistics')
+	.then(function (response) {
+		// handle success
+		let _statistic_table = response['data'];
+		let statistic_table = document.querySelector('#statistic-table');
+		statistic_table.innerHTML = 
+		'<table border=1 style="margin: 0 auto; position: relative; font-size: 14px">' +
+		'<tr><th>Отправлено</th><th>Выполнено</th><th>Ошибка</th></tr>' +
+		'<tr><td>' + _statistic_table['sent_to_agent'][10] + '</td>' +
+		'<td>' + _statistic_table['done'][10] + '</td>' +
+		'<td>' + _statistic_table['error'][10] + '</td></tr>';
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
+	.then(function () {
+		//
+	});
+}
+
+// =============================================================================
 
 
+
+// =============================================================================
 
 
 
 
 function create_viewBox(p_data){
 
-	width = 600;
+	width = 550;
 	height = 400;
 	margin = ({top: 20, right: 20, bottom: 30, left: 30});
 
@@ -321,21 +491,33 @@ function update_data(p_data){
 	return p_data;
 }
 
+// =============================================================================
+// =============================================================================
 
 window.onload = function(){
-
-
-
 	render_topology_graph();
+
+	render_blacklist();
+	setInterval(render_blacklist, 4000);
+
+	render_statistic_table();
+	setInterval(render_statistic_table, 4000);
+
+	render_tasks_table();
+	setInterval(render_tasks_table, 4000);
+
 	exmp1 = generate_data1();
 	exmp2 = generate_data2();
 	exmp3 = generate_data3();
 	v_svg = create_viewBox(exmp1);
 	// render_statistic_chart(v_svg, update_data(exmp));
 
+	render_statistic_chart1(v_svg, update_data(exmp1));
+	render_statistic_chart2(v_svg, update_data(exmp2));
+	render_statistic_chart3(v_svg, update_data(exmp3));
 	setInterval(function(){
 		render_statistic_chart1(v_svg, update_data(exmp1));
 		render_statistic_chart2(v_svg, update_data(exmp2));
 		render_statistic_chart3(v_svg, update_data(exmp3));
-	}, 2000);
+	}, 4000);
 }

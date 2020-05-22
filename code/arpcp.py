@@ -1119,6 +1119,12 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 		_redis = ARPCP.redis()
 		for agent, ip in agents.items():
 			_redis.set(f"ARPCP:agent:{agent}:ip", ip)
+			# _redis.set(f"ARPCP:agent:{agent}:disable_counter", json.dumps(0))
+
+	@staticmethod
+	def reset_disable_counter(agents):
+		_redis = ARPCP.redis()
+		for agent in agents:
 			_redis.set(f"ARPCP:agent:{agent}:disable_counter", json.dumps(0))
 
 	@staticmethod
@@ -1153,9 +1159,10 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 	def echo():
 		_redis = ARPCP.redis()
 
-		# get agents found on the network
+		# get agents found on the network & reset d_c for them
 		found_agents = Controller.find_agents()
 		fa = set(found_agents.keys())
+		Controller.reset_disable_counter(list(fa))
 
 		# get already known agents
 		if _redis.exists("ARPCP:agents"):
@@ -1349,11 +1356,11 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 				else:
 					pass
 
-		status_statistics = {
-			"sent_to_agent": 23,
-			"done": 4,
-			"error": 0
-		}
+		# status_statistics = {
+		# 	"sent_to_agent": 23,
+		# 	"done": 4,
+		# 	"error": 0
+		# }
 		return status_statistics
 
 	@staticmethod

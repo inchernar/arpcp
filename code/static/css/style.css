@@ -2,6 +2,14 @@ body{
 	background-color: #42455A;
 }
 
+#topology-graph:before{
+	content: "Топология кластера";
+	position: relative;
+	display: block;
+	margin-bottom: 10px;
+	left: calc(50% - 75px);
+}
+
 #topology-graph{
 	position: fixed;
 	background-color: white;
@@ -12,38 +20,143 @@ body{
 	padding: 10px;
 }
 
+#statistic-chart:before{
+	content: "Статистика статусов";
+	position: relative;
+	display: block;
+	margin-bottom: 10px;
+	left: calc(50% - 100px);
+}
+
 #statistic-chart{
 	position: fixed;
 	background-color: white;
 	border-radius: 10px;
-	width: 600px;
+	width: 500px;
 	height: 400px;
 	top: 535px;
+}
+
+#statistic-table:before{
+	content: "Статусы";
+	position: relative;
+	display: block;
+	margin-bottom: 10px;
+	left: calc(50% - 37px);
 }
 
 #statistic-table{
 	position: fixed;
 	background-color: white;
 	border-radius: 10px;
-	height: 400px;
-	width: 212px;
+	height: 100px;
+	width: 312px;
 	top: 535px;
-	left: 615px;
+	left: 515px;
 }
 
-#node-controls{
+#blacklist:before{
+	content: "Чёрный список";
+	position: relative;
+	display: block;
+	margin-bottom: 10px;
+	left: calc(50% - 65px);
+}
+
+#blacklist{
+	position: fixed;
+	background-color: white;
+	border-radius: 10px;
+	height: 293px;
+	width: 302px;
+	top: 642px;
+	left: 515px;
+	padding-left: 10px
+}
+
+.blocked_agent{
+	color: red;
+}
+
+.green_on_black{
+	position: relative;
+	color: lightgreen;
+	font-family: monospace;
+	background: black;
+	font-size: 18px;
+	/*margin-top: 10px;*/
+	padding-top: 5px;
+	padding-bottom: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	left: -10px;
+	width: calc(100% + 20px);
+}
+
+#agent-info:before{
+	content: "Информация об агенте";
+	position: relative;
+	display: block;
+	margin-bottom: 10px;
+	left: calc(50% - 100px);
+}
+
+#agent-info{
 	position: fixed;
 	background-color: white;
 	/*border: 1px solid red;*/
 	border-radius: 10px;
 	left: 835px;
-	width: 1055px;
+	width: 312px;
 	height: 380px;
 	padding: 10px;
 }
 
+#task-info:before{
+	content: "Информация о задаче";
+	position: relative;
+	display: block;
+	margin-bottom: 10px;
+	left: calc(50% - 100px);
+}
+
+#task-info{
+	position: fixed;
+	background-color: white;
+	/*border: 1px solid red;*/
+	border-radius: 10px;
+	left: 1174px;
+	width: 312px;
+	height: 380px;
+	padding: 10px;
+}
+
+#rpc-controls:before{
+	content: "Назначить задачу";
+	position: relative;
+	left: calc(50% - 80px);
+}
+
+#rpc-controls{
+	position: fixed;
+	background-color: white;
+	/*border: 1px solid red;*/
+	border-radius: 10px;
+	left: 1513px;
+	width: 377px;
+	height: 380px;
+	padding: 10px;
+}
+
+#tasks-table:before{
+	content: "Список задач";
+	position: relative;
+	left: calc(50% - 40px);
+}
+
 #tasks-table{
 	position: fixed;
+	overflow-y: scroll;
 	background-color: white;
 	border-radius: 10px;
 	top: 415px;

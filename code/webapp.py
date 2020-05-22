@@ -81,6 +81,13 @@ def remove_from_blacklist():
 		return '',200
 	return '',400
 
+@webapp.route('/is_in_blacklist', methods = ['GET'])
+def is_in_blacklist():
+	_agent = request.args.get('agent')
+	if _agent and (_agent in arpcp.Controller.blacklist()):
+		return str(True)
+	return str(False)
+
 @webapp.route('/rpc', methods = ['POST'])
 def rpc():
 	pass
