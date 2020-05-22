@@ -4,13 +4,15 @@ from flask import Flask, render_template, jsonify
 
 webapp = Flask(
 	__name__,
-	template_folder = "webapp/templates",
-	static_folder = "webapp/static"
+	template_folder = "templates",
+	static_folder = "static"
 )
 
 @webapp.route('/', methods = ['GET'])
 def index():
-	return open('./webapp/static/index.html').read()
+	# with open('/srv/arpcp/static/index.html') as index:
+		# return str(index.read())
+	return webapp.send_static_file('index.html')
 
 # @webapp.route('/agent_info', methods = ['GET'])
 # def agent_info():
@@ -44,3 +46,7 @@ def procedures():
 @webapp.route('/callbacks', methods = ['GET'])
 def callbacks():
 	return jsonify(arpcp.Controller.callbacks())
+
+if __name__ == '__main__':
+	webapp.debug = True
+	webapp.run()

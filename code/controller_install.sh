@@ -9,11 +9,11 @@
 # # Cyan         0;36     Light Cyan    1;36
 # # Light Gray   0;37     White         1;37
 
-# printstep(){
-# 	BLUE='\033[1;34m'
-# 	NC='\033[0m' # No Color
-# 	echo -e "${BLUE}===> $1 <===${NC}"
-# }
+printstep(){
+	BLUE='\033[1;34m'
+	NC='\033[0m' # No Color
+	echo -e "${BLUE}===> $1 <===${NC}"
+}
 
 # # ======================================
 
@@ -23,6 +23,7 @@ ARPCP_USER=arpcp-user
 ./agent_install.sh
 
 packages=(
+	nmap
 	nginx
 	uwsgi
 	uwsgi-plugin-python3
@@ -50,7 +51,6 @@ files=(
 	arpcp-cluster-registrar.service
 	arpcp-cluster-statistician.py
 	arpcp-cluster-statistician.service
-	webapp
 	webapp.py
 	webapp.nginx.conf
 	webapp.uwsgi.ini
@@ -58,9 +58,39 @@ files=(
 for file in ${files[@]}
 do
 	printstep "copying $file"
-	cp -r $file $ARPCP_DIR/$file
-	chmod 777 $ARPCP_DIR/$file
+	cp $file $ARPCP_DIR/$file
+	chmod 644 $ARPCP_DIR/$file
 	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$file
+done
+
+printstep "copying static folder & subfolders"
+static_folders=(
+	static
+	static/js
+	static/css
+	static/images
+)
+for static_folder in ${static_folders[@]}
+do
+	mkdir -p -m 755 $ARPCP_DIR/$static_folder
+	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$static_folder
+done
+
+printstep "copying static folder internal files"
+static_files=(
+	static/index.html
+	static/js/d3.v5.js
+	static/js/main.js
+	static/css/style.css
+	static/images/agent_off.svg
+	static/images/agent_on.svg
+	static/images/controller.svg
+)
+for static_file in ${static_files[@]}
+do
+	cp $PWD/$static_file $ARPCP_DIR/$static_file
+	chmod 644 $ARPCP_DIR/$static_file
+	chown $ARPCP_USER:$ARPCP_USER $ARPCP_DIR/$static_file
 done
 
 daemons=(
@@ -75,18 +105,17 @@ do
 	# systemctl enable $daemon
 	systemctl start $daemon
 done
+systemctl daemon-reload
 
+systemctl stop nginx
+systemctl stop uwsgi
+printstep "removing default symlink for default [nginx]"
+rm /etc/nginx/sites-enabled/default
 printstep "creating symlink for webapp.nginx.conf"
 ln -s $ARPCP_DIR/webapp.nginx.conf /etc/nginx/sites-enabled/webapp.nginx.conf
+printstep "starting nginx"
+systemctl start nginx
 printstep "creating symlink for webapp.uwsgi.ini"
 ln -s $ARPCP_DIR/webapp.uwsgi.ini /etc/uwsgi/apps-enabled/webapp.uwsgi.ini
-services=(
-	nginx
-	uwsgi
-)
-for service in ${services[@]}
-do
-	printstep "restarting $service"
-	systemctl restart $service
-done
-
+printstep "starting uwsgi"
+systemctl start uwsgi
