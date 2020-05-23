@@ -1,3 +1,13 @@
+let old_nodes = [];
+
+let proc_desrcs = {
+	'add': 'сложение двух чисел',
+	'sub': 'вычитание двух чисел',
+	'multiple': 'умножение двух чисел',
+	'divide': 'деление двух чисел',
+	'bash': 'выполнение команды интерпретатора bash'
+}
+
 // =============================================================================
 
 function rpc_controls_table_agents_update(){
@@ -22,8 +32,14 @@ function rpc_controls_table_procedures_update(){
 		let procedures_select = document.querySelector('#rpc-controls-table_procedures');
 		let procedures = response['data'];
 		for(let i = 0; i < procedures.length; i++){
-			let tmpOption = new Option(procedures[i], procedures[i]);
-			procedures_select.options.add(tmpOption);
+			let tmpOption = '<option value="' + procedures[i] + '" ';
+			if(procedures[i] in proc_desrcs){
+				tmpOption += 'title="' + proc_desrcs[procedures[i]] + '"'
+			}
+			tmpOption += '>' + procedures[i] + '</option>'
+			// let tmpOption = new Option(procedures[i], procedures[i]);
+			// procedures_select.options.add(tmpOption);
+			procedures_select.innerHTML += tmpOption;
 		}
 	})
 	.catch(function (error) {
@@ -98,7 +114,8 @@ function submit_task(){
 function add_to_blacklist(agent){
 	axios.get('/add_to_blacklist?agent=' + agent)
 	.then(function (response) {
-		//
+		let button = document.querySelector("#add_to_blacklist_button");
+		button.disabled = true;
 	})
 	.catch(function (error) {
 		// handle error
@@ -115,21 +132,40 @@ function choose_node(d){
 		type = "Агент"
 	}
 
-	let content = '<table border=1 style="">' +
-		'<tr><td>Тип</td><td>' + type + '</td></tr>' +
-		'<tr><td>mac</td><td>' + d.mac + '</td></tr>' +
-		'<tr><td>ip</td><td>' + d.ip + '</td></tr>' +
-		'<tr><td>Тики сбоя</td><td>' + d.disable_counter + '/3</td></tr></table>'
+	let content = '<table class="table table-striped" border=1 style="">' +
+		'<tr><td>Тип</td><td><b>' + type + '</b></td></tr>' +
+		'<tr><td>mac</td><td><b>' + d.mac + '</b></td></tr>' +
+		'<tr><td>ip</td><td><b>' + d.ip + '</b></td></tr>' +
+		'<tr><td>Тики сбоя</td><td><b>' + d.disable_counter + ' из 3</b></td></tr></table>';
+
 
 	if(d.mac != "00:00:00:00:00:00"){
-		axios.get('/is_in_blacklist?agent=' + d.mac)
+		axios.get('/agent_info?agent=' + d.mac)
 		.then(function (response) {
-			_is_in_blacklist = response['data']
-			if(_is_in_blacklist != 'True'){
-				content += '<button onclick="add_to_blacklist(\'' + d.mac + '\')">Исключить из кластера</button>'
-			}
-			let node_control = document.querySelector("#agent-info");
-			node_control.innerHTML = content;
+			let tasks = response['data']['tasks'];
+
+			axios.get('/is_in_blacklist?agent=' + d.mac)
+			.then(function (response) {
+				_is_in_blacklist = response['data']
+				if(_is_in_blacklist != 'True'){
+					content += '<button class="btn btn-danger" id="add_to_blacklist_button" onclick="add_to_blacklist(\'' + d.mac + '\')">Исключить из кластера</button>'
+				}
+
+				content += '<table class="table table-striped" border=1 style="margin-top:8px;">'
+				content += '<tr class="thead-dark"><th>Задачи (' + tasks.length + ')</th></tr>'
+				for(let i = 0; i < tasks.length; i++){
+					content += '<tr onclick="render_task_table(\'' + tasks[i] + 
+					'\')"><td><p class="task_id">' + tasks[i] + '</p></td></tr>';
+				}
+				content += '</table>';
+
+				let node_control = document.querySelector("#agent-info");
+				node_control.innerHTML = content;
+			})
+			.catch(function (error) {
+				// handle error
+				console.log(error);
+			})
 		})
 		.catch(function (error) {
 			// handle error
@@ -142,11 +178,32 @@ function choose_node(d){
 	}
 }
 
+function nodes_lists_comparator(nodes1, nodes2){
+	console.log(nodes1);
+	console.log(nodes2);
+	if(nodes1.length == nodes2.length){
+		for(let i = 0; i < nodes1.length; i++){
+			if(nodes1[i]['mac'] != nodes2[i]['mac']) return false;
+			if(nodes1[i]['disable_counter'] != nodes2[i]['disable_counter']) return false;
+			if(nodes1[i]['ip'] != nodes2[i]['ip']) return false;
+		}
+		return true;
+	}
+	else{
+		return false;
+	}
+}
+
 function render_topology_graph(){
-	console.log('rendered!');
 	axios.get('/agents_info')
 	.then(function (response) {
 		let nodes = response['data'];
+		if(nodes_lists_comparator(nodes, old_nodes)){
+			return;
+		}
+		document.querySelector('#topology-graph').innerHTML = '';
+		old_nodes = nodes.slice();
+		console.log('agents updated');
 		nodes.push({mac: '00:00:00:00:00:00', ip: '0.0.0.0', disable_counter: 0})
 
 		let links = []
@@ -175,8 +232,8 @@ function render_topology_graph(){
 			.on("end", dragended);
 		}
 
-		viewBoxWidth = '1200';
-		viewBoxHeight = '700';
+		viewBoxWidth = '800';
+		viewBoxHeight = '500';
 		nodeWidth = 120;
 		nodeHeight = 1.3 * nodeWidth;
 		nodeRadius = nodeWidth / 5;
@@ -205,7 +262,7 @@ function render_topology_graph(){
 		.selectAll("g")
 		.data(nodes)
 		.join("svg")
-			.attr("width", nodeWidth)
+			.attr("width", nodeWidth + 50)
 			.attr("height", nodeHeight)
 			.on("click", d => choose_node(d))
 			.call(drag(simulation));
@@ -236,7 +293,7 @@ function render_topology_graph(){
 				if(d.mac == "00:00:00:00:00:00") return nodeWidth + 20
 				else return nodeWidth
 			})
-			.attr("font-size", "9pt")
+			.attr("font-size", "14px")
 			.attr("font-family", "monospace");
 
 		// mac
@@ -246,8 +303,8 @@ function render_topology_graph(){
 				else return 'controller'
 			})
 			.attr("x", 0)
-			.attr("y", nodeWidth + 14)
-			.attr("font-size", "9pt")
+			.attr("y", nodeWidth + 20)
+			.attr("font-size", "14px")
 			.attr("font-family", "monospace");
 
 		node.append("title")
@@ -302,7 +359,7 @@ function render_blacklist(){
 		let _blacklist = response['data'];
 		let blacklist = document.querySelector('#blacklist');
 		_tmp_table = ''
-		_tmp_table = "<table border=1>";
+		_tmp_table = "<table class='table' border=1>";
 		for(let i = 0; i < _blacklist.length; i++ ){
 			_tmp_table += "<tr><td><div class='blocked_agent'>" + _blacklist[i] + "</div></td>" +
 				"<td><button onclick=\"remove_from_blacklist('" + _blacklist[i] + "')\">Восстановить</button></td></tr>"
@@ -328,13 +385,22 @@ function render_task_table(task){
 	.then(function (response) {
 		let task_info = document.querySelector('#task-info');
 		_task_info = response['data'];
-		_tmp_task_info = '';
-		_tmp_task_info += '<div>task: <b>' + task + '</b></div>';
-		_tmp_task_info += '<br><div>agent: <b>' + _task_info['agent'] + '</b></div>';
-		_tmp_task_info += '<br><div>command:</div>';
-		_tmp_task_info += '<div class="green_on_black_cmd">>>> ' + _task_info['callback'] + '('+ _task_info['procedure'] + '(' + _task_info['args'] + '))</div>'
-		_tmp_task_info += '<br><div>result:</div>';
-		_tmp_task_info += '<div class="green_on_black_result">' + _task_info['result'] + '</div>'
+		_tmp_task_info = '<table class="table table-striped" border=1>';
+		_tmp_task_info += '<tr><td>Идентификатор</td><td><span style="font-family:monospace; font-size:12px;"><b>' + task + '</b></span></td></tr>';
+		_tmp_task_info += '<tr><td>Назначена агенту</td><td><span style="font-family:monospace; font-size:16px;"><b>' + _task_info['agent'] + '</b></span></td></tr>';
+		_tmp_task_info += '</table>'
+		_tmp_task_info += '<div>Инструкция:</div>';
+		_tmp_task_info += '<div class="green_on_black_cmd">>>> ' 
+		if(_task_info['callback']){
+			_tmp_task_info += _task_info['callback'] + '(';
+		}
+		_tmp_task_info += _task_info['procedure'] + '(' + _task_info['args'] + ')';
+		if(_task_info['callback']){
+			_tmp_task_info += ')';
+		}
+		_tmp_task_info += '</div>';
+		_tmp_task_info += '<div>Результат:</div>';
+		_tmp_task_info += '<div><pre class="green_on_black_result">' + _task_info['result'] + '</pre></div>'
 		task_info.innerHTML = _tmp_task_info;
 		//
 	})
@@ -377,9 +443,9 @@ function render_tasks_table(){
 		let _tasks_info = response['data'];
 		let _tasks_table = document.querySelector('#tasks-table');
 		_tasks_table.innerHTML = ''
-		_tmp_tasks_table = '<table border=1 style="position: relative; font-size: 14px">' +
-		'<tr><th>Task ID</th><th>Agent</th><th>Procedure</th><th>Params</th><th>Callback</th><th>Status</th><th>Result</th>' +
-		'<th><button onclick="delete_all_tasks()">УДАЛИТЬ ВСЁ</button></th></tr>'
+		_tmp_tasks_table = '<table class="table table-striped" border=1 style="position: relative; font-size: 14px">' +
+		'<tr class="thead-dark"><th>Task ID</th><th>Агент</th><th>Процедура</th><th>Параметры</th><th>Обр.вызов</th><th>Статус</th><th>Результат</th>' +
+		'<th><button class="btn" style="color:white;" onclick="delete_all_tasks()">Удалить всё</button></th></tr>'
 		for(let i = 0; i < _tasks_info.length; i++){
 			_tmp_tasks_table += '<tr onclick="render_task_table(\'' + _tasks_info[i]['task_id'] + '\')"' +
 			'id="task-' + _tasks_info[i]['task_id'] + '">' +
@@ -390,7 +456,7 @@ function render_tasks_table(){
 			'<td><p class="task_option">' + _tasks_info[i]['callback'] + '</p></td>' +
 			'<td><p class="task_option">' + _tasks_info[i]['status'] + '</p></td>' +
 			'<td><p class="task_option">' + _tasks_info[i]['result'] + '</p></td>' +
-			'<td>' + '<button onclick="delete_task(\''+ _tasks_info[i]['task_id'] + '\')">Удалить</button>' + '</td>' +
+			'<td>' + '<button class="btn" onclick="delete_task(\''+ _tasks_info[i]['task_id'] + '\')">Удалить</button>' + '</td>' +
 			'</tr>'
 		}
 		_tmp_tasks_table += '</table>';
@@ -414,8 +480,8 @@ function render_statistic_table(){
 		let _statistic_table = response['data'];
 		let statistic_table = document.querySelector('#statistic-table');
 		statistic_table.innerHTML = 
-		'<table border=1 style="margin: 0 auto; position: relative; font-size: 14px">' +
-		'<tr><th>Отправлено</th><th>Выполнено</th><th>Ошибка</th></tr>' +
+		'<table class="table" border=1 style="margin: 0 auto; position: relative; font-size: 14px">' +
+		'<tr class="thead-dark"><th>Отправлено</th><th>Выполнено</th><th>Ошибка</th></tr>' +
 		'<tr><td>' + _statistic_table['sent_to_agent'][10] + '</td>' +
 		'<td>' + _statistic_table['done'][10] + '</td>' +
 		'<td>' + _statistic_table['error'][10] + '</td></tr>';
@@ -604,22 +670,21 @@ function update_data(p_data){
 // =============================================================================
 
 window.onload = function(){
-	rpc_controls_table_update();
-
 	render_topology_graph();
 	// setInterval(function(){
-	// 	document.querySelector('#topology-graph').innerHTML = '';
 	// 	render_topology_graph();
 	// }, 3000);
 
 	render_blacklist();
-	setInterval(render_blacklist, 1500);
+	// setInterval(render_blacklist, 1500);
 
 	render_statistic_table();
-	setInterval(render_statistic_table, 1500);
+	// setInterval(render_statistic_table, 1500);
 
 	render_tasks_table();
-	setInterval(render_tasks_table, 1500);
+	// setInterval(render_tasks_table, 1500);
+
+	rpc_controls_table_update();
 
 	exmp1 = generate_data1();
 	exmp2 = generate_data2();

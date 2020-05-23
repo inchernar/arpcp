@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <meta charset="utf-8">
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
 <link rel="stylesheet" type="text/css" href="/static/css/style.css">
 <script type="text/javascript" src="/static/js/d3.v5.js"></script>
 <script type="text/javascript" src="/static/js/axios.js"></script>
@@ -9,48 +10,81 @@
 	<title>ARPCP Web Controller</title>
 </head>
 <body>
-	<div id="topology-graph"></div>
-	<div id="statistic-chart"></div>
-	<div id="blacklist"></div>
-	<div id="statistic-table"></div>
-	<div id="agent-info"></div>
-	<div id="task-info"></div>
-	<div id="rpc-controls">
-		<table id="rpc-controls-table">
-			<tr>
-				<td>Агенты</td>
-				<td>
-					<select id="rpc-controls-table_agents" name="agents_select" multiple size=6>
-					</select>
-				</td>
-			</tr>
-			<tr>
-				<td>Процедура</td>
-				<td>
-					<select id="rpc-controls-table_procedures" name="agents_select">
-					</select>
-				</td>
-			</tr>
-			<tr>
-				<td>Параметры</td>
-				<td><input type="text" name="" id="rpc-controls-table_procedure-args"></td>
-			</tr>
-			<tr>
-				<td>Обратный вызов</td>
-				<td>
-					<select id="rpc-controls-table_callbacks" name="agents_select">
-						<option value=""></option>
-					</select>
-				</td>
-			</tr>
-			<tr>
-				<td>Асинхронно</td>
-				<td><input id="rpc-controls-table_async" type="checkbox" checked name=""></td>
-			</tr>
-		</table>
-		<input type="submit" value="Отправить" id="rpc-controls-table_submit" onclick="submit_task()">
+	<div id="window-topology">
+		<div class="window-title">Топология кластера</div>
+		<div class="window-content" id="topology-graph"></div>
 	</div>
-	<div id="tasks-table"></div>
+
+	<div id="window-statistic-chart">
+		<div class="window-title">Статистика статусов</div>
+		<div class="window-content" id="statistic-chart"></div>
+	</div>
+
+	<div id="window-blacklist">
+		<div class="window-title">Чёрный список</div>
+		<div class="window-content" id="blacklist"></div>
+	</div>
+
+	<div id="window-statistic-table">
+		<div class="window-title">Статусы</div>
+		<div class="window-content" id="statistic-table"></div>
+	</div>
+
+	<div id="window-agent">
+		<div class="window-title">Информация об агенте</div>
+		<div class="window-content" id="agent-info"></div>
+	</div>
+
+	<div id="window-task">
+		<div class="window-title">Информация о задаче</div>
+		<div class="window-content" id="task-info"></div>
+	</div>
+
+
+	<div id="window-rpc">
+		<div class="window-title">Назначить задачу</div>
+		<div class="window-content" id="rpc-controls">
+			<table id="rpc-controls-table">
+				<tr>
+					<td>Агенты</td>
+					<td>
+						<select id="rpc-controls-table_agents" name="agents_select" multiple size=6>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>Процедура</td>
+					<td>
+						<select id="rpc-controls-table_procedures" name="agents_select">
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>Параметры</td>
+					<td><input type="text" name="" id="rpc-controls-table_procedure-args"></td>
+				</tr>
+				<tr>
+					<td>Обратный вызов</td>
+					<td>
+						<select id="rpc-controls-table_callbacks" name="agents_select">
+							<option value=""></option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>Асинхронно</td>
+					<td><input id="rpc-controls-table_async" type="checkbox" checked name=""></td>
+				</tr>
+			</table>
+			<input type="submit" value="Отправить" id="rpc-controls-table_submit" onclick="submit_task()">
+		</div>
+	</div>
+
+	<div id="window-tasks">
+		<div class="window-title">Список задач</div>
+		<div class="window-content" id="tasks-table"></div>
+	</div>
+
 <script>document.write('<script src="http://' + (location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1"></' + 'script>')</script>
 </body>
 </html>

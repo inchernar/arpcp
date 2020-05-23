@@ -2,76 +2,147 @@ body{
 	background-color: #42455A;
 }
 
-#topology-graph:before{
-	content: "Топология кластера";
-	position: relative;
-	display: block;
-	margin-bottom: 10px;
-	left: calc(50% - 75px);
+.table th {
+	padding: 0px;
+	/*padding-left: 5px;*/
+	text-align: center;
+	vertical-align: middle;
 }
 
-#topology-graph{
+.table td {
+	padding: 0px;
+	padding-left: 7px;
+	vertical-align: middle;
+}
+
+.window-title{
+	/*position: fixed;*/
+	position: relative;
+	z-index: 999;
+	height: 40px;
+	width: inherit;
+	/*border: 1px solid red;*/
+	text-align: center;
+	padding-top: 5px;
+	font-size: 20px;
+	color: white;
+	background-color: rgb(51,204,255);
+	border-top-left-radius: 10px;
+	border-top-right-radius: 10px;
+}
+
+.window-content{
+	position: relative;
+	width: inherit;
+	height: calc(100% - 40px);
+}
+
+#window-topology{
 	position: fixed;
 	background-color: white;
-	/*border: 1px solid black;*/
-	width: 800px;
+	top: 5px;
+	left: 5px;
+	width: 700px;
 	height: 500px;
 	border-radius: 10px;
-	padding: 10px;
 }
 
-#statistic-chart:before{
-	content: "Статистика статусов";
-	position: relative;
-	display: block;
-	margin-bottom: 10px;
-	left: calc(50% - 100px);
-}
-
-#statistic-chart{
+#window-agent{
 	position: fixed;
 	background-color: white;
 	border-radius: 10px;
+	left: 710px;
+	width: 320px;
+	top: 5px;
+	height: 500px;
+}
+
+#agent-info{
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+#window-task{
+	position: fixed;
+	background-color: white;
+	/*border: 1px solid red;*/
+	border-radius: 10px;
+	left: 1035px;
+	width: 570px;
+	top: 5px;
+	height: 500px;
+}
+
+.green_on_black_cmd{
+	position: relative;
+	color: rgb(10,250,10);
+	font-family: monospace;
+	background: rgb(30,30,30);
+	font-size: 18px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	width: 570px;
+}
+
+.green_on_black_result{
+	position: relative;
+	color: rgb(10,250,10);
+	font-family: monospace;
+	background: rgb(30,30,30);
+	font-size: 14px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	width: 570px;
+	height: 310px;
+	border-bottom-left-radius: 10px;
+	border-bottom-right-radius: 10px;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+#window-rpc{
+	position: fixed;
+	background-color: white;
+	/*border: 1px solid red;*/
+	border-radius: 10px;
+	left: 1610px;
+	width: 305px;
+	top: 5px;
+	height: 500px;
+}
+
+#window-statistic-chart{
+	position: fixed;
+	background-color: white;
+	border-radius: 10px;
+	left: 5px;
 	width: 500px;
 	height: 400px;
-	top: 535px;
+	top: 510px;
 }
 
-#statistic-table:before{
-	content: "Статусы";
-	position: relative;
-	display: block;
-	margin-bottom: 10px;
-	left: calc(50% - 37px);
-}
-
-#statistic-table{
+#window-statistic-table{
 	position: fixed;
 	background-color: white;
 	border-radius: 10px;
 	height: 100px;
-	width: 312px;
-	top: 535px;
-	left: 515px;
+	width: 320px;
+	top: 510px;
+	left: 510px;
 }
 
-#blacklist:before{
-	content: "Чёрный список";
-	position: relative;
-	display: block;
-	margin-bottom: 10px;
-	left: calc(50% - 65px);
-}
-
-#blacklist{
+#window-blacklist{
 	position: fixed;
 	background-color: white;
 	border-radius: 10px;
-	height: 293px;
-	width: 302px;
-	top: 642px;
-	left: 515px;
-	padding-left: 10px
+	height: 295px;
+	width: 320px;
+	top: 615px;
+	left: 510px;
 }
 
 .blocked_agent{
@@ -105,118 +176,17 @@ body{
 	white-space: nowrap;
 }
 
-.green_on_black_cmd{
-	position: relative;
-	color: lightgreen;
-	font-family: monospace;
-	background: black;
-	font-size: 18px;
-	/*margin-top: 10px;*/
-	padding-top: 5px;
-	padding-bottom: 5px;
-	padding-left: 10px;
-	padding-right: 10px;
-	left: -10px;
-	width: calc(100% + 0px);
-}
-
-.green_on_black_result{
-	position: relative;
-	color: lightgreen;
-	font-family: monospace;
-	background: black;
-	font-size: 16px;
-	/*margin-top: 10px;*/
-	padding-top: 5px;
-	padding-bottom: 5px;
-	padding-left: 10px;
-	padding-right: 10px;
-	left: -10px;
-	width: calc(100% + 0px);
-	height: 285px;
-	border-bottom-left-radius: 10px;
-	border-bottom-right-radius: 10px;
-	overflow: scroll;
-}
-
-#agent-info:before{
-	content: "Информация об агенте";
-	position: relative;
-	display: block;
-	margin-bottom: 10px;
-	left: calc(50% - 100px);
-}
-
-#agent-info{
+#window-tasks{
 	position: fixed;
 	background-color: white;
-	/*border: 1px solid red;*/
 	border-radius: 10px;
+	top: 510px;
 	left: 835px;
-	width: 312px;
-	height: 500px;
-	padding: 10px;
-}
-
-#task-info:before{
-	content: "Информация о задаче";
-	position: relative;
-	display: block;
-	margin-bottom: 10px;
-	left: calc(50% - 100px);
-}
-
-#task-info{
-	position: fixed;
-	background-color: white;
-	/*border: 1px solid red;*/
-	border-radius: 10px;
-	left: 1174px;
-	width: 312px;
-	height: 500px;
-	padding: 10px;
-}
-
-#rpc-controls:before{
-	content: "Назначить задачу";
-	position: relative;
-	left: calc(50% - 80px);
-}
-
-#rpc-controls{
-	position: fixed;
-	background-color: white;
-	/*border: 1px solid red;*/
-	border-radius: 10px;
-	left: 1513px;
-	width: 377px;
-	height: 500px;
-	padding: 10px;
-}
-
-#tasks-table:before{
-	content: "Список задач";
-	position: relative;
-	left: calc(50% - 40px);
+	width: 1080px;
+	height: 400px;
+	overflow: hidden;
 }
 
 #tasks-table{
-	position: fixed;
-	overflow-y: scroll;
-	background-color: white;
-	border-radius: 10px;
-	top: 535px;
-	left: 835px;
-	width: 1055px;
-	height: 380px;
-	padding: 10px;
-}
-
-#arg_count_increaser{
-	/*border: 1px solid black;*/
-	width: 15px;
-	height: 15px;
-	border-radius: 2px;
-	color: blue;
-	background-color: rgb(160, 250, 160);
+	overflow-y: auto;
 }
