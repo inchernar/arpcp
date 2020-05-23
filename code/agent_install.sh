@@ -77,6 +77,7 @@ for daemon in ${daemons[@]}
 do
 	printstep "creating symlink for $daemon.service"
 	ln -s $ARPCP_DIR/$daemon.service /etc/systemd/system/$daemon.service
+	systemctl daemon-reload
 	printstep "enabling & starting $daemon.service"
 	# systemctl enable $daemon
 	systemctl start $daemon
