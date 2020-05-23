@@ -47,6 +47,7 @@ function choose_node(d){
 }
 
 function render_topology_graph(){
+	console.log('rendered!');
 	axios.get('/agents_info')
 	.then(function (response) {
 		let nodes = response['data'];
@@ -496,6 +497,10 @@ function update_data(p_data){
 
 window.onload = function(){
 	render_topology_graph();
+	// setInterval(function(){
+	// 	document.querySelector('#topology-graph').innerHTML = '';
+	// 	render_topology_graph();
+	// }, 3000);
 
 	render_blacklist();
 	setInterval(render_blacklist, 4000);
