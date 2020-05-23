@@ -388,6 +388,7 @@ function render_task_table(task){
 		_tmp_task_info = '<table class="table table-striped" border=1>';
 		_tmp_task_info += '<tr><td>Идентификатор</td><td><span style="font-family:monospace; font-size:12px;"><b>' + task + '</b></span></td></tr>';
 		_tmp_task_info += '<tr><td>Назначена агенту</td><td><span style="font-family:monospace; font-size:16px;"><b>' + _task_info['agent'] + '</b></span></td></tr>';
+		_tmp_task_info += '<tr><td>Статус</td><td><span style="font-family:monospace; font-size:16px;"><b>' + _task_info['status'] + '</b></span></td></tr>';
 		_tmp_task_info += '</table>'
 		_tmp_task_info += '<div>Инструкция:</div>';
 		_tmp_task_info += '<div class="green_on_black_cmd">>>> ' 
@@ -476,7 +477,6 @@ function render_tasks_table(){
 function render_statistic_table(){
 	axios.get('/status_statistics')
 	.then(function (response) {
-		// handle success
 		let _statistic_table = response['data'];
 		let statistic_table = document.querySelector('#statistic-table');
 		statistic_table.innerHTML = 
@@ -498,14 +498,46 @@ function render_statistic_table(){
 // =============================================================================
 
 
+function render_statistics_chart(p_chart){
+	axios.get('/status_statistics')
+	.then(function (response) {
+		let statistics = response['data'];
 
-// =============================================================================
+		let sent_to_agent_statistics = [];
+		for(let i = 0; i < statistics['sent_to_agent'].length; i++){
+			sent_to_agent_statistics.push({
+				step: i,
+				value: statistics['sent_to_agent'][i]
+			});
+		};
 
+		let done_statistics = [];
+		for(let i = 0; i < statistics['done'].length; i++){
+			done_statistics.push({
+				step: i,
+				value: statistics['done'][i]
+			});
+		};
 
+		let error_statistics = [];
+		for(let i = 0; i < statistics['error'].length; i++){
+			error_statistics.push({
+				step: i,
+				value: statistics['error'][i]
+			});
+		};
 
+		render_statistic_chart_for_array(p_chart, sent_to_agent_statistics, "blue");
+		render_statistic_chart_for_array(p_chart, done_statistics, "green");
+		render_statistic_chart_for_array(p_chart, error_statistics, "red");
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
+};
 
-function create_viewBox(p_data){
-
+function create_viewBox(){
 	width = 550;
 	height = 400;
 	margin = ({top: 20, right: 20, bottom: 30, left: 30});
@@ -517,11 +549,11 @@ function create_viewBox(p_data){
 
 
 	x = d3.scaleLinear()
-		.domain([0, 100])
+		.domain([0, 10])
 		.range([margin.left, width - margin.right]);
 
 	y = d3.scaleLinear()
-		.domain([0, 300])
+		.domain([0, 30])
 		.range([height - margin.bottom, margin.top]);
 
 	xAxis = g => g
@@ -535,10 +567,8 @@ function create_viewBox(p_data){
 		.call(g => g.select(".tick:last-of-type text").clone()
 			.attr("x", 3)
 			.attr("text-anchor", "start")
-			.attr("font-weight", "bold")
-			.text(p_data.y));
-
-
+			.attr("font-weight", "bold"));
+			// .text(p_data.y));
 
 	const svg = d3.select('#statistic-chart').append("svg")
 		  .attr("viewBox", [0, 0, width, height]);
@@ -552,16 +582,16 @@ function create_viewBox(p_data){
 		 return svg
 }
 
-function render_statistic_chart1(p_svg, p_data){
+function render_statistic_chart_for_array(p_svg, p_data, p_color){
 
-  var u = p_svg.selectAll(".lineTest1")
+  var u = p_svg.selectAll("." + p_color)
     .data([p_data], function(d){ return d.value });
 
   // Updata the line
   u
     .enter()
     .append("path")
-    .attr("class","lineTest1")
+    .attr("class", p_color)
     .merge(u)
     .transition()
     .duration(1)
@@ -569,90 +599,12 @@ function render_statistic_chart1(p_svg, p_data){
       .x(function(d) { return x(d.step); })
       .y(function(d) { return y(d.value); }))
       .attr("fill", "none")
-      .attr("stroke", "steelblue")
+      .attr("stroke", p_color)
       .attr("stroke-width", 2.5)
-}
-
-function render_statistic_chart2(p_svg, p_data){
-
-  var u = p_svg.selectAll(".lineTest2")
-    .data([p_data], function(d){ return d.value });
-
-  // Updata the line
-  u
-    .enter()
-    .append("path")
-    .attr("class","lineTest2")
-    .merge(u)
-    .transition()
-    .duration(1)
-    .attr("d", d3.line()
-      .x(function(d) { return x(d.step); })
-      .y(function(d) { return y(d.value); }))
-      .attr("fill", "none")
-      .attr("stroke", "red")
-      .attr("stroke-width", 2.5)
-}
-
-function render_statistic_chart3(p_svg, p_data){
-
-  var u = p_svg.selectAll(".lineTest3")
-    .data([p_data], function(d){ return d.value });
-
-  // Updata the line
-  u
-    .enter()
-    .append("path")
-    .attr("class","lineTest3")
-    .merge(u)
-    .transition()
-    .duration(1)
-    .attr("d", d3.line()
-      .x(function(d) { return x(d.step); })
-      .y(function(d) { return y(d.value); }))
-      .attr("fill", "none")
-      .attr("stroke", "green")
-      .attr("stroke-width", 2.5)
-}
-
-function generate_data1(){
-	N = 100;
-	data = []
-	for(let i = 0; i < N; i++){
-		data.push({
-			step: i,
-			value: 120
-		})
-	}
-	return data;
-}
-
-function generate_data2(){
-	N = 100;
-	data = []
-	for(let i = 0; i < N; i++){
-		data.push({
-			step: i,
-			value: 150
-		})
-	}
-	return data;
-}
-
-function generate_data3(){
-	N = 100;
-	data = []
-	for(let i = 0; i < N; i++){
-		data.push({
-			step: i,
-			value: 180
-		})
-	}
-	return data;
 }
 
 function update_data(p_data){
-	N = 100;
+	N = 11;
 	for(let i = 0; i < (N-1); i++){
 		p_data[i] = {
 			step: i,
@@ -671,33 +623,24 @@ function update_data(p_data){
 
 window.onload = function(){
 	render_topology_graph();
-	// setInterval(function(){
-	// 	render_topology_graph();
-	// }, 3000);
+	setInterval(function(){
+		render_topology_graph();
+	}, 3000);
 
 	render_blacklist();
-	// setInterval(render_blacklist, 1500);
+	setInterval(render_blacklist, 1500);
 
 	render_statistic_table();
-	// setInterval(render_statistic_table, 1500);
+	setInterval(render_statistic_table, 1500);
 
 	render_tasks_table();
-	// setInterval(render_tasks_table, 1500);
+	setInterval(render_tasks_table, 1500);
 
 	rpc_controls_table_update();
 
-	exmp1 = generate_data1();
-	exmp2 = generate_data2();
-	exmp3 = generate_data3();
-	v_svg = create_viewBox(exmp1);
-	// render_statistic_chart(v_svg, update_data(exmp));
-
-	render_statistic_chart1(v_svg, update_data(exmp1));
-	render_statistic_chart2(v_svg, update_data(exmp2));
-	render_statistic_chart3(v_svg, update_data(exmp3));
+	let statistic_chart = create_viewBox();
+	render_statistics_chart(statistic_chart);
 	setInterval(function(){
-		render_statistic_chart1(v_svg, update_data(exmp1));
-		render_statistic_chart2(v_svg, update_data(exmp2));
-		render_statistic_chart3(v_svg, update_data(exmp3));
+		render_statistics_chart(statistic_chart);
 	}, 4000);
 }
