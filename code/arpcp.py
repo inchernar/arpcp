@@ -11,13 +11,11 @@ import redis
 import socket
 import threading as th
 from importlib import reload
-from libnmap.process import NmapProcess
-from libnmap.parser import NmapParser
 
 import procedures
 import callbacks
 
-VERSION = "0.8"
+VERSION = "0.9"
 ERROR = True
 LOG = 30
 # 0,False - without logging
@@ -1089,53 +1087,80 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 		ARPCP.redis().flushall()
 
 	@staticmethod
-	def scan_network():
-		nm = NmapProcess("192.168.1.1/24", options = f"-sT -p {CONFIG['server']['port']}")
-		nm.run()
-		nmap_report = NmapParser.parse(nm.stdout)
-
-		ips = []
-		for scanned_host in nmap_report.hosts:
-			if scanned_host._status['state'] == 'up':
-				res = ARPCP.call(scanned_host._main_address, CONFIG['server']['port'], 'id')
+	def survey_agents(agents):
+		_redis = ARPCP.redis()
+		active_agents = []
+		inactive_agents = []
+		for agent in agents:
+			if _redis.exists(f"ARPCP:agent:{agent}:ip"):
+				ip = _redis.get(f"ARPCP:agent:{agent}:ip")
+				res = ARPCP.call(ip, CONFIG['server']['port'], 'id')
 				if res['code'] == 100:
-					ips.append(scanned_host._main_address)
+					active_agents.append(agent)
+				else:
+					inactive_agents.append(agent)
+			else:
+				inactive_agents.append(agent)
+		return active_agents, inactive_agents
+
+	@staticmethod
+	def get_ips_by_macs(macs):
+		_redis = ARPCP.redis()
+		ips = []
+		for mac in macs:
+			if _redis.exists(f"ARPCP:agent:{mac}:ip"):
+				ips.append(_redis.get(f"ARPCP:agent:{mac}:ip"))
 		return ips
 
 	@staticmethod
-	def find_agents():
-		ips = Controller.scan_network()
+	def scan_network():
+		from libnmap.process import NmapProcess
+		from libnmap.parser import NmapParser
 
+		nm = NmapProcess("192.168.1.1/24", options = f"-sT -p {CONFIG['server']['port']}")
+		nm.run()
+		nmap_report = NmapParser.parse(nm.stdout)
+		return [scanned_host._main_address for scanned_host in nmap_report.hosts if scanned_host._status['state'] == 'up']
+
+		# ips = []
+		# for scanned_host in nmap_report.hosts:
+		# 	if scanned_host._status['state'] == 'up':
+		# 		res = ARPCP.call(scanned_host._main_address, CONFIG['server']['port'], 'id')
+		# 		if res['code'] == 100:
+		# 			ips.append(scanned_host._main_address)
+		# return ips
+
+	@staticmethod
+	def detect_agents(ips):
 		agents = {}
+		_blacklist = Controller.blacklist()
 		for ip in ips:
 			res = ARPCP.call(ip, CONFIG['server']['port'], 'id')
-			if res['code'] == 100:
+			if (res['code'] == 100) and (not res['data']['agent_mac'] in _blacklist):
 				agents[res['data']['agent_mac']] = ip
-
 		return agents
 
 	@staticmethod
-	def register_agents(agents):
+	def reset_disable_counter(agents):
 		_redis = ARPCP.redis()
-		for agent, ip in agents.items():
-			_redis.set(f"ARPCP:agent:{agent}:ip", ip)
-			_redis.set(f"ARPCP:agent:{agent}:disable_counter", json.dumps(0))
+		for agent in agents:
+			if _redis.exists(f"ARPCP:agent:{agent}:disable_counter"):
+				_redis.set(f"ARPCP:agent:{agent}:disable_counter", json.dumps(0))
 
 	@staticmethod
 	def check_for_deletion(agents):
 		_redis = ARPCP.redis()
-		remaining_agents = agents.copy()
+		remaining_agents = []
 		agents_for_deletion = []
 		for agent in agents:
 			if _redis.exists(f"ARPCP:agent:{agent}:disable_counter"):
 				dc = json.loads(_redis.get(f"ARPCP:agent:{agent}:disable_counter"))
 				if dc >= CONFIG["controller"]["max_dc"]:
-					remaining_agents.remove(agent)
 					agents_for_deletion.append(agent)
 				else:
+					remaining_agents.append(agent)
 					_redis.set(f"ARPCP:agent:{agent}:disable_counter", json.dumps(dc + 1))
 			else:
-				remaining_agents.remove(agent)
 				agents_for_deletion.append(agent)
 		Controller.delete_agents(agents_for_deletion)
 		return remaining_agents
@@ -1150,47 +1175,57 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 				_redis.delete(f"ARPCP:agent:{agent}:disable_counter")
 
 	@staticmethod
+	def register_agents(agents):
+		_redis = ARPCP.redis()
+		for agent, ip in agents.items():
+			_redis.set(f"ARPCP:agent:{agent}:ip", ip)
+			_redis.set(f"ARPCP:agent:{agent}:disable_counter", json.dumps(0))
+
+	@staticmethod
 	def echo():
 		_redis = ARPCP.redis()
 
-		# get agents found on the network
-		found_agents = Controller.find_agents()
-		fa = set(found_agents.keys())
+		# ----------------------------------------------------------------------
 
-		# get already known agents
-		if _redis.exists("ARPCP:agents"):
-			old_agents = json.loads(_redis.get("ARPCP:agents"))
-		else:
-			old_agents = []
-		oa = set(old_agents)
+		# get agents (MACs) from redis
+		a = set(Controller.agents())
 
-		# get blacklist
-		if _redis.exists("ARPCP:agents:blacklist"):
-			blacklist = json.loads(_redis.get("ARPCP:agents:blacklist"))
-		else:
-			blacklist = []
-		b = set(blacklist)
+		# get blacklist (MACs)
+		b = set(Controller.blacklist())
 
-		# calculate new agents for cluster (fa - oa - b)
-		new_agents = list(fa.difference(oa).difference(b))
-		ns = list(set(found_agents.keys()).difference(set(new_agents)))
-		for n in ns:
-			del found_agents[n]
-		Controller.register_agents(found_agents)
+		# ----------------------------------------------------------------------
 
-		# calculate old active agents (fa*oa - b)
-		old_active_agents = list(fa.intersection(oa).difference(b))
+		active_agents, inactive_agents = Controller.survey_agents(list(a.difference(b)))
 
-		# calculate old inactive agents (oa - fa - b)
-		old_inactive_agents = list(oa.difference(fa).difference(b))
-		old_inactive_agents = Controller.check_for_deletion(old_inactive_agents)
+		# ----------------------------------------------------------------------
 
-		# calculate excluded agents ( (fa + oa) * b)
-		excluded_agents = list(fa.union(oa).intersection(b))
-		excluded_agents = Controller.check_for_deletion(excluded_agents)
+		excluded_ips = Controller.get_ips_by_macs(list(a.union(b)))
+		ei = set(excluded_ips)
 
-		agents = new_agents + old_active_agents + old_inactive_agents + excluded_agents
-		_redis.set("ARPCP:agents", json.dumps(agents))
+		available_ips = Controller.scan_network()
+		ai = set(available_ips)
+
+		detected_agents_object = Controller.detect_agents(ai.difference(ei))
+
+		# ----------------------------------------------------------------------
+
+		# Postprocessing
+		Controller.reset_disable_counter(active_agents)
+		Controller.register_agents(detected_agents_object)
+
+		removal_candidates = list(set(inactive_agents).union(b))
+		remaining_agents_after_checking = Controller.check_for_deletion(removal_candidates)
+
+		# ----------------------------------------------------------------------
+
+		# compile result
+		new_agents = active_agents + list(detected_agents_object.keys()) + remaining_agents_after_checking
+		# na = set(active_agents).union(set(detected_agents_object.keys()))
+		# na.union(set(remaining_agents_after_checking))
+		# new_agents = list(na)
+		_redis.set("ARPCP:agents", json.dumps(new_agents))
+
+		return new_agents
 
 	@staticmethod
 	def add_to_blacklist(agent):
@@ -1222,25 +1257,25 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 
 	@staticmethod
 	def agent_info(agent):
-		_agent_info = {}
 		_redis = ARPCP.redis()
-		_agent_info["mac"] = agent
+		if agent in Controller.agents():
+			_agent_info = {}
+			_agent_info["mac"] = agent
+			_agent_info["ip"] = None
+			if _redis.exists(f"ARPCP:agent:{agent}:ip"):
+				_agent_info["ip"] = _redis.get(f"ARPCP:agent:{agent}:ip")
 
-		_agent_info["ip"] = None
-		if _redis.exists(f"ARPCP:agent:{agent}:ip"):
-			_agent_info["ip"] = _redis.get(f"ARPCP:agent:{agent}:ip")
+			_agent_info["disable_counter"] = CONFIG["controller"]["max_dc"]
+			if _redis.exists(f"ARPCP:agent:{agent}:disable_counter"):
+				_agent_info["disable_counter"] = json.loads(_redis.get(f"ARPCP:agent:{agent}:disable_counter"))
 
-		_agent_info["disable_counter"] = CONFIG["controller"]["max_dc"]
-		if _redis.exists(f"ARPCP:agent:{agent}:disable_counter"):
-			_agent_info["disable_counter"] = json.loads(_redis.get(f"ARPCP:agent:{agent}:disable_counter"))
-
-		tasks = []
-		if _redis.exists("ARPCP:tasks:assign"):
-			tasks = json.loads(_redis.get("ARPCP:tasks:assign"))
-		agent_tasks = [task for task in tasks if task.startswith(f"_{agent}_")]
-		_agent_info["tasks"] = agent_tasks
-
-		return _agent_info
+			tasks = []
+			if _redis.exists("ARPCP:tasks:assign"):
+				tasks = json.loads(_redis.get("ARPCP:tasks:assign"))
+			agent_tasks = [task for task in tasks if task.startswith(f"_{agent}_")]
+			_agent_info["tasks"] = agent_tasks
+			return _agent_info
+		return None
 
 	@staticmethod
 	def agents_info():
@@ -1286,6 +1321,13 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 		ARPCP.erase_task_from_redis(_redis, task)
 
 	@staticmethod
+	def delete_all_tasks():
+		_redis = ARPCP.redis()
+		_tasks = Controller.tasks()
+		for _task in _tasks:
+			ARPCP.erase_task_from_redis(_redis, _task)
+
+	@staticmethod
 	def tasks():
 		_redis = ARPCP.redis()
 		if _redis.exists("ARPCP:tasks:assign"):
@@ -1296,30 +1338,30 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 	@staticmethod
 	def task_info(task):
 		_redis = ARPCP.redis()
-		_task_info = {}
-		_task_info["task_id"] = task
-		_task_info["agent"] = task.split("_")[1]
+		if task in Controller.tasks():
+			_task_info = {}
+			_task_info["task_id"] = task
+			_task_info["agent"] = task.split("_")[1]
+			_task_info["status"] = None
+			if _redis.exists(f"ARPCP:task:{task}:status"):
+				_task_info["status"] = _redis.get(f"ARPCP:task:{task}:status")
 
-		_task_info["status"] = None
-		if _redis.exists(f"ARPCP:task:{task}:status"):
-			_task_info["status"] = _redis.get(f"ARPCP:task:{task}:status")
+			_task_info["procedure"] = None
+			_task_info["args"] = None
+			if _redis.exists(f"ARPCP:task:{task}:message"):
+				_message = json.loads(_redis.get(f"ARPCP:task:{task}:message"))
+				_task_info["procedure"] = _message["remote_procedure"]
+				_task_info["args"] = _message["remote_procedure_args"]
 
-		_task_info["procedure"] = None
-		_task_info["args"] = None
-		if _redis.exists(f"ARPCP:task:{task}:message"):
-			_message = json.loads(_redis.get(f"ARPCP:task:{task}:message"))
-			_task_info["procedure"] = _message["remote_procedure"]
-			_task_info["args"] = _message["remote_procedure_args"]
+			_task_info["callback"] = None
+			if _redis.exists(f"ARPCP:task:{task}:callback"):
+				_task_info["callback"] = _redis.get(f"ARPCP:task:{task}:callback")
 
-		_task_info["callback"] = None
-		if _redis.exists(f"ARPCP:task:{task}:callback"):
-			_task_info["callback"] = _redis.get(f"ARPCP:task:{task}:callback")
-
-		_task_info["result"] = None
-		if _redis.exists(f"ARPCP:task:{task}:result"):
-			_task_info["result"] = json.loads(_redis.get(f"ARPCP:task:{task}:result"))
-
-		return _task_info
+			_task_info["result"] = None
+			if _redis.exists(f"ARPCP:task:{task}:result"):
+				_task_info["result"] = json.loads(_redis.get(f"ARPCP:task:{task}:result"))
+			return _task_info
+		return None
 
 	@staticmethod
 	def tasks_info():
@@ -1349,11 +1391,11 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 				else:
 					pass
 
-		status_statistics = {
-			"sent_to_agent": 23,
-			"done": 4,
-			"error": 0
-		}
+		# status_statistics = {
+		# 	"sent_to_agent": 23,
+		# 	"done": 4,
+		# 	"error": 0
+		# }
 		return status_statistics
 
 	@staticmethod

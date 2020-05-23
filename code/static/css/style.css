@@ -2,53 +2,191 @@ body{
 	background-color: #42455A;
 }
 
-#topology-graph{
+.table th {
+	padding: 0px;
+	/*padding-left: 5px;*/
+	text-align: center;
+	vertical-align: middle;
+}
+
+.table td {
+	padding: 0px;
+	padding-left: 7px;
+	vertical-align: middle;
+}
+
+.window-title{
+	/*position: fixed;*/
+	position: relative;
+	z-index: 999;
+	height: 40px;
+	width: inherit;
+	/*border: 1px solid red;*/
+	text-align: center;
+	padding-top: 5px;
+	font-size: 20px;
+	color: white;
+	background-color: rgb(51,204,255);
+	border-top-left-radius: 10px;
+	border-top-right-radius: 10px;
+}
+
+.window-content{
+	position: relative;
+	width: inherit;
+	height: calc(100% - 40px);
+}
+
+#window-topology{
 	position: fixed;
 	background-color: white;
-	/*border: 1px solid black;*/
-	width: 800px;
+	top: 5px;
+	left: 5px;
+	width: 700px;
 	height: 500px;
 	border-radius: 10px;
-	padding: 10px;
 }
 
-#statistic-chart{
+#window-agent{
 	position: fixed;
 	background-color: white;
 	border-radius: 10px;
-	width: 600px;
-	height: 400px;
-	top: 535px;
+	left: 710px;
+	width: 320px;
+	top: 5px;
+	height: 500px;
 }
 
-#statistic-table{
-	position: fixed;
-	background-color: white;
-	border-radius: 10px;
-	height: 400px;
-	width: 212px;
-	top: 535px;
-	left: 615px;
+#agent-info{
+	overflow-y: auto;
+	overflow-x: hidden;
 }
 
-#node-controls{
+#window-task{
 	position: fixed;
 	background-color: white;
 	/*border: 1px solid red;*/
 	border-radius: 10px;
-	left: 835px;
-	width: 1055px;
-	height: 380px;
-	padding: 10px;
+	left: 1035px;
+	width: 570px;
+	top: 5px;
+	height: 500px;
 }
 
-#tasks-table{
+.green_on_black_cmd{
+	position: relative;
+	color: rgb(10,250,10);
+	font-family: monospace;
+	background: rgb(30,30,30);
+	font-size: 18px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	width: 570px;
+}
+
+.green_on_black_result{
+	position: relative;
+	color: rgb(10,250,10);
+	font-family: monospace;
+	background: rgb(30,30,30);
+	font-size: 14px;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
+	width: 570px;
+	height: 285px;
+	border-bottom-left-radius: 10px;
+	border-bottom-right-radius: 10px;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+
+#window-rpc{
+	position: fixed;
+	background-color: white;
+	/*border: 1px solid red;*/
+	border-radius: 10px;
+	left: 1610px;
+	width: 305px;
+	top: 5px;
+	height: 500px;
+}
+
+#window-statistic-chart{
 	position: fixed;
 	background-color: white;
 	border-radius: 10px;
-	top: 415px;
+	left: 5px;
+	width: 500px;
+	height: 400px;
+	top: 510px;
+}
+
+#window-statistic-table{
+	position: fixed;
+	background-color: white;
+	border-radius: 10px;
+	height: 100px;
+	width: 320px;
+	top: 510px;
+	left: 510px;
+}
+
+#window-blacklist{
+	position: fixed;
+	background-color: white;
+	border-radius: 10px;
+	height: 295px;
+	width: 320px;
+	top: 615px;
+	left: 510px;
+}
+
+.blocked_agent{
+	color: red;
+}
+
+.task_id{
+	margin: 0;
+	padding: 0;
+	width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.task_mac{
+	margin: 0;
+	padding: 0;
+	width: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.task_option{
+	margin: 0;
+	padding: 0;
+	width: 80px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#window-tasks{
+	position: fixed;
+	background-color: white;
+	border-radius: 10px;
+	top: 510px;
 	left: 835px;
-	width: 1055px;
-	height: 500px;
-	padding: 10px;
+	width: 1080px;
+	height: 400px;
+	overflow: hidden;
+}
+
+#tasks-table{
+	overflow-y: auto;
 }

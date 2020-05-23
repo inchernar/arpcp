@@ -50,6 +50,7 @@ mkdir -p $ARPCP_DIR/static
 ln -s $PWD/static/index.html $ARPCP_DIR/static/index.html
 mkdir -p $ARPCP_DIR/static/js
 ln -s $PWD/static/js/d3.v5.js $ARPCP_DIR/static/js/d3.v5.js
+ln -s $PWD/static/js/axios.js $ARPCP_DIR/static/js/axios.js
 ln -s $PWD/static/js/main.js $ARPCP_DIR/static/js/main.js
 mkdir -p $ARPCP_DIR/static/css
 ln -s $PWD/static/css/style.css $ARPCP_DIR/static/css/style.css
