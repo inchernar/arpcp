@@ -345,6 +345,17 @@ function render_task_table(task){
 	// 
 }
 
+function delete_all_tasks(){
+	axios.get('/delete_all_tasks')
+	.then(function (response) {
+		clear_task_table(task);
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	});
+}
+
 function delete_task(task){
 	axios.get('/delete_task?task='+task)
 	.then(function (response) {
@@ -367,7 +378,8 @@ function render_tasks_table(){
 		let _tasks_table = document.querySelector('#tasks-table');
 		_tasks_table.innerHTML = ''
 		_tmp_tasks_table = '<table border=1 style="position: relative; font-size: 14px">' +
-		'<tr><th>Task ID</th><th>Agent</th><th>Procedure</th><th>Params</th><th>Callback</th><th>Status</th><th>Result</th><th></th></tr>'
+		'<tr><th>Task ID</th><th>Agent</th><th>Procedure</th><th>Params</th><th>Callback</th><th>Status</th><th>Result</th>' +
+		'<th><button onclick="delete_all_tasks()">УДАЛИТЬ ВСЁ</button></th></tr>'
 		for(let i = 0; i < _tasks_info.length; i++){
 			_tmp_tasks_table += '<tr onclick="render_task_table(\'' + _tasks_info[i]['task_id'] + '\')"' +
 			'id="task-' + _tasks_info[i]['task_id'] + '">' +

@@ -52,6 +52,11 @@ def delete_task():
 		return '',200
 	return '',400
 
+@webapp.route('/delete_all_tasks', methods = ['GET'])
+def delete_all_tasks():
+	arpcp.Controller.delete_all_tasks()
+	return '',200
+
 @webapp.route('/status_statistics', methods = ['GET'])
 def status_statistics():
 	_redis = arpcp.ARPCP.redis()

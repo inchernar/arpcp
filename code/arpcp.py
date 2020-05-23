@@ -1321,6 +1321,13 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 		ARPCP.erase_task_from_redis(_redis, task)
 
 	@staticmethod
+	def delete_all_tasks():
+		_redis = ARPCP.redis()
+		_tasks = Controller.tasks()
+		for _task in _tasks:
+			ARPCP.erase_task_from_redis(_redis, _task)
+
+	@staticmethod
 	def tasks():
 		_redis = ARPCP.redis()
 		if _redis.exists("ARPCP:tasks:assign"):
