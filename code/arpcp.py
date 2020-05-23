@@ -15,7 +15,7 @@ from importlib import reload
 import procedures
 import callbacks
 
-VERSION = "0.8"
+VERSION = "0.9"
 ERROR = True
 LOG = 30
 # 0,False - without logging

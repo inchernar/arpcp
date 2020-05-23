@@ -1,4 +1,100 @@
 // =============================================================================
+
+function rpc_controls_table_agents_update(){
+	axios.get('/agents')
+	.then(function (response) {
+		let agents_select = document.querySelector('#rpc-controls-table_agents');
+		let agents = response['data'];
+		for(let i = 0; i < agents.length; i++){
+			let tmpOption = new Option(agents[i], agents[i]);
+			agents_select.options.add(tmpOption);
+		}
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	});
+}
+
+function rpc_controls_table_procedures_update(){
+	axios.get('/procedures')
+	.then(function (response) {
+		let procedures_select = document.querySelector('#rpc-controls-table_procedures');
+		let procedures = response['data'];
+		for(let i = 0; i < procedures.length; i++){
+			let tmpOption = new Option(procedures[i], procedures[i]);
+			procedures_select.options.add(tmpOption);
+		}
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	});
+}
+
+function rpc_controls_table_callbacks_update(){
+	axios.get('/callbacks')
+	.then(function (response) {
+		let callbacks_select = document.querySelector('#rpc-controls-table_callbacks');
+		let callbacks = response['data'];
+		for(let i = 0; i < callbacks.length; i++){
+			let tmpOption = new Option(callbacks[i], callbacks[i]);
+			callbacks_select.options.add(tmpOption);
+		}
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	});
+}
+
+function rpc_controls_table_update(){
+	rpc_controls_table_agents_update();
+	rpc_controls_table_procedures_update();
+	rpc_controls_table_callbacks_update();
+}
+
+function submit_task(){
+	let selected_agents = document.querySelector('#rpc-controls-table_agents').getElementsByTagName('option');
+	selected_agents_list = [];
+	for (var i = 0; i < selected_agents.length; i++) {
+		if(selected_agents[i].selected == true){
+			selected_agents_list.push(selected_agents[i].value);
+		}
+	}
+	console.log(selected_agents_list);
+
+	let selected_procedure = document.querySelector('#rpc-controls-table_procedures').value;
+	console.log(selected_procedure);
+
+	let selected_procedure_args = document.querySelector('#rpc-controls-table_procedure-args').value;
+	console.log(selected_procedure_args);
+
+	let selected_callback = document.querySelector('#rpc-controls-table_callbacks').value;
+	console.log(selected_callback);
+
+	let is_async = document.querySelector('#rpc-controls-table_async').checked;
+	console.log(is_async);
+
+	console.log(typeof selected_procedure_args);
+
+	axios.post('/rpc', {
+		agents: selected_agents_list,
+		procedure: selected_procedure,
+		args: selected_procedure_args,
+		callback: selected_callback,
+		is_async: is_async
+	})
+	.then(function (response) {
+		console.log(response['data'])//
+	})
+	.catch(function (error) {
+		// handle error
+		console.log(error);
+	})
+}
+
+// =============================================================================
 function add_to_blacklist(agent){
 	axios.get('/add_to_blacklist?agent=' + agent)
 	.then(function (response) {
@@ -496,20 +592,22 @@ function update_data(p_data){
 // =============================================================================
 
 window.onload = function(){
+	rpc_controls_table_update();
+
 	render_topology_graph();
-	setInterval(function(){
-		document.querySelector('#topology-graph').innerHTML = '';
-		render_topology_graph();
-	}, 3000);
+	// setInterval(function(){
+	// 	document.querySelector('#topology-graph').innerHTML = '';
+	// 	render_topology_graph();
+	// }, 3000);
 
 	render_blacklist();
-	setInterval(render_blacklist, 4000);
+	setInterval(render_blacklist, 1500);
 
 	render_statistic_table();
-	setInterval(render_statistic_table, 4000);
+	setInterval(render_statistic_table, 1500);
 
 	render_tasks_table();
-	setInterval(render_tasks_table, 4000);
+	setInterval(render_tasks_table, 1500);
 
 	exmp1 = generate_data1();
 	exmp2 = generate_data2();

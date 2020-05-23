@@ -16,69 +16,39 @@
 	<div id="agent-info"></div>
 	<div id="task-info"></div>
 	<div id="rpc-controls">
-
-		<div>
-			<table>
-				<tr>
-					<td>Агенты</td>
-					<td>
-						<select name="agents_select" multiple size=6>
-							<option value="8c:16:45:4d:bc:bc">8c:16:45:4d:bc:bc</option>
-							<option value="e0:d5:5e:89:71:20">e0:d5:5e:89:71:20</option>
-							<option value="00:28:f8:20:5e:63">00:28:f8:20:5e:63</option>
-						</select>
-					</td>
-				</tr>
-				<tr>
-					<td>Процедура</td>
-					<td>
-						<select name="agents_select">
-							<option value="add">add</option>
-							<option value="sub">sub</option>
-							<option value="multiple">multiple</option>
-							<option value="divide">divide</option>
-						</select>
-					</td>
-				</tr>
-				<tr>
-					<td>Обратный вызов</td>
-					<td>
-						<select name="agents_select">
-							<option value=""></option>
-							<option value="double">double</option>
-						</select>
-					</td>
-				</tr>
-			</table>
-
-
-
-			<label for="args_select">Параметры</label></br>
-			<table id="args_table">
-				<tr><td>
-						<input type="text" name="">
-					</td>
-					<td>
-						<label>string</label><input type="radio" checked name="arg_1">
-						<label>float</label><input type="radio" name="arg_1">
-					</td>
-				</tr>
-				<tr><td>
-						<input type="text" name="">
-					</td>
-					<td>
-						<label>string</label><input type="radio" checked name="arg_2">
-						<label>float</label><input type="radio" name="arg_2">
-					</td>
-				</tr>
-			</table>
-			<div id="arg_count_increaser"><b>+</b></div>
-
-
-			<label>Асинхронно</label><input type="checkbox" checked name="">
-			<input type="submit" value="Отправить">
-		</div>
-
+		<table id="rpc-controls-table">
+			<tr>
+				<td>Агенты</td>
+				<td>
+					<select id="rpc-controls-table_agents" name="agents_select" multiple size=6>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td>Процедура</td>
+				<td>
+					<select id="rpc-controls-table_procedures" name="agents_select">
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td>Параметры</td>
+				<td><input type="text" name="" id="rpc-controls-table_procedure-args"></td>
+			</tr>
+			<tr>
+				<td>Обратный вызов</td>
+				<td>
+					<select id="rpc-controls-table_callbacks" name="agents_select">
+						<option value=""></option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td>Асинхронно</td>
+				<td><input id="rpc-controls-table_async" type="checkbox" checked name=""></td>
+			</tr>
+		</table>
+		<input type="submit" value="Отправить" id="rpc-controls-table_submit" onclick="submit_task()">
 	</div>
 	<div id="tasks-table"></div>
 <script>document.write('<script src="http://' + (location.host || 'localhost').split(':')[0] + ':35729/livereload.js?snipver=1"></' + 'script>')</script>

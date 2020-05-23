@@ -14,6 +14,10 @@ def index():
 		# return str(index.read())
 	return webapp.send_static_file('index.html')
 
+@webapp.route('/agents', methods = ['GET'])
+def agents():
+	return jsonify(arpcp.Controller.agents())
+
 @webapp.route('/agent_info', methods = ['GET'])
 def agent_info():
 	_agent = request.args.get('agent')
@@ -88,10 +92,41 @@ def is_in_blacklist():
 		return str(True)
 	return str(False)
 
+def parse_arg(arg_string):
+	arg_string = arg_string.strip()
+	if (arg_string.startswith('"') and arg_string.endswith('"')) or \
+		(arg_string.startswith("'") and arg_string.endswith("'")):
+		return arg_string[1:-1]
+	elif arg_string == 'True':
+		return True
+	elif arg_string == 'False':
+		return False
+	else:
+		try:
+			if '.' in arg_string:
+				return float(arg_string)
+			else:
+				return int(arg_string)
+		except Exception as e:
+			return str(arg_string)
+
+def parse_args(args_string):
+	_parsed_args = []
+	for _arg in args_string.split(","):
+		_parsed_args.append(parse_arg(_arg))
+	return _parsed_args
+
 @webapp.route('/rpc', methods = ['POST'])
 def rpc():
-	pass
-
+	agents = request.json["agents"]
+	procedure = request.json["procedure"]
+	if procedure == 'bash':
+		args = [str(request.json["args"]).strip()]
+	else:
+		args = parse_args(request.json["args"])
+	callback = request.json["callback"]
+	is_async = request.json["is_async"]
+	return jsonify(arpcp.Controller.rpc(agents, procedure, args, callback, is_async))
 
 if __name__ == '__main__':
 	webapp.debug = True
