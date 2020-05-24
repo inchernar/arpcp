@@ -5,19 +5,34 @@ let proc_desrcs = {
 	'sub': 'вычитание двух чисел',
 	'multiple': 'умножение двух чисел',
 	'divide': 'деление двух чисел',
-	'bash': 'выполнение команды интерпретатора bash'
+	'bash': 'выполнение команды интерпретатора bash',
+	'reboot': 'перезагрузить компьютер',
+	'get_time': 'получить локальное время компьютера',
+	'set_time': 'установить локальное время компьютера (ЧЧ:ММ:СС)',
+	'long_task': 'долговыполняющаяся задача (15 секунд)',
+	'memory_usage': 'информация о состоянии памяти',
+	'running_processes': 'количество запущенных процессов'
 }
+
+let old_agents_for_rpc = [];
 
 // =============================================================================
 
 function rpc_controls_table_agents_update(){
-	axios.get('/agents')
+	axios.get('/agents_info')
 	.then(function (response) {
+		let agents_for_rpc = response['data'];
+		if(JSON.stringify(agents_for_rpc) == JSON.stringify(old_agents_for_rpc)){
+			return;
+		}
+		old_agents_for_rpc = agents_for_rpc;
 		let agents_select = document.querySelector('#rpc-controls-table_agents');
-		let agents = response['data'];
-		for(let i = 0; i < agents.length; i++){
-			let tmpOption = new Option(agents[i], agents[i]);
-			agents_select.options.add(tmpOption);
+		agents_select.innerHTML = '';
+		for(let i = 0; i < agents_for_rpc.length; i++){
+			if(agents_for_rpc[i]['disable_counter'] == 0){
+				let tmpOption = new Option(agents_for_rpc[i]['mac'], agents_for_rpc[i]['mac']);
+				agents_select.options.add(tmpOption);
+			}
 		}
 	})
 	.catch(function (error) {
@@ -66,6 +81,9 @@ function rpc_controls_table_callbacks_update(){
 
 function rpc_controls_table_update(){
 	rpc_controls_table_agents_update();
+	setInterval(function(){
+		rpc_controls_table_agents_update();
+	}, 3000);
 	rpc_controls_table_procedures_update();
 	rpc_controls_table_callbacks_update();
 }
@@ -78,21 +96,11 @@ function submit_task(){
 			selected_agents_list.push(selected_agents[i].value);
 		}
 	}
-	console.log(selected_agents_list);
 
 	let selected_procedure = document.querySelector('#rpc-controls-table_procedures').value;
-	console.log(selected_procedure);
-
 	let selected_procedure_args = document.querySelector('#rpc-controls-table_procedure-args').value;
-	console.log(selected_procedure_args);
-
 	let selected_callback = document.querySelector('#rpc-controls-table_callbacks').value;
-	console.log(selected_callback);
-
 	let is_async = document.querySelector('#rpc-controls-table_async').checked;
-	console.log(is_async);
-
-	console.log(typeof selected_procedure_args);
 
 	axios.post('/rpc', {
 		agents: selected_agents_list,
@@ -102,7 +110,6 @@ function submit_task(){
 		is_async: is_async
 	})
 	.then(function (response) {
-		console.log(response['data'])//
 	})
 	.catch(function (error) {
 		// handle error
@@ -124,7 +131,6 @@ function add_to_blacklist(agent){
 }
 
 function choose_node(d){
-	// console.log(d);
 	if(d.mac == "00:00:00:00:00:00"){
 		type = "Контроллер"
 	}
@@ -179,8 +185,6 @@ function choose_node(d){
 }
 
 function nodes_lists_comparator(nodes1, nodes2){
-	console.log(nodes1);
-	console.log(nodes2);
 	if(nodes1.length == nodes2.length){
 		for(let i = 0; i < nodes1.length; i++){
 			if(nodes1[i]['mac'] != nodes2[i]['mac']) return false;
@@ -203,7 +207,6 @@ function render_topology_graph(){
 		}
 		document.querySelector('#topology-graph').innerHTML = '';
 		old_nodes = nodes.slice();
-		console.log('agents updated');
 		nodes.push({mac: '00:00:00:00:00:00', ip: '0.0.0.0', disable_counter: 0})
 
 		let links = []
