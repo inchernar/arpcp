@@ -110,6 +110,7 @@ function submit_task(){
 		is_async: is_async
 	})
 	.then(function (response) {
+		//
 	})
 	.catch(function (error) {
 		// handle error

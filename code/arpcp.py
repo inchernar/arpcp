@@ -1415,6 +1415,7 @@ _ff:ff:ff:ff:ff:ff_e3c478ac-1613-40a9-a5b3-004a6d7229cf
 				print(f"ip: {_ip}")
 				print(f"method: {_method}")
 				print(f"task_id: {_task_id}")
+				print(f"params: {params}")
 				print(f"additions: {_additions}")
 				_response = ARPCP.call(_ip, CONFIG["server"]["port"], _method, {
 					"remote_procedure": procedure,

@@ -18,12 +18,16 @@ printstep(){
 # ======================================
 
 ARPCP_DIR=/srv/arpcp
+ARPCP_USER=arpcp-user
 LOG_DIR=/var/log/arpcp
 
 ### START
 printstep "====== START ======"
 printstep "creating $ARPCP_DIR directory"
 mkdir -m 755 -p $ARPCP_DIR
+
+printstep "creating $ARPCP_USER user"
+useradd -M -s /bin/bash $ARPCP_USER
 
 files=(
 	arpcp.py
