@@ -20,30 +20,36 @@ def divide(a, b):
 # 	res = p.stdout.read().decode('utf-8')
 # 	return res
 
-def long_task():
+def long_task(_):
 	import time
-	time.sleep(15)
+	time.sleep(10)
 	return 'result of long_task()'
 
-def reboot():
-	import subprocess
-	p = subprocess.Popen('reboot', shell=True, stdout=subprocess.PIPE)
-	res = p.stdout.read().decode('utf-8')
-	return res
+# def reboot(_):
+# 	import subprocess
+# 	p = subprocess.Popen('reboot', shell=True, stdout=subprocess.PIPE)
+# 	res = p.stdout.read().decode('utf-8')
+# 	return res
 
-def get_time():
+def get_time(_):
 	import subprocess
 	p = subprocess.Popen('date +%T', shell=True, stdout=subprocess.PIPE)
 	res = p.stdout.read().decode('utf-8')
 	return res
 
-def set_time(date):
+# def set_time(date):
+# 	import subprocess
+# 	p = subprocess.Popen(f'date +%T -s {date}', shell=True, stdout=subprocess.PIPE)
+# 	res = p.stdout.read().decode('utf-8')
+# 	return res
+
+def ls(folder):
 	import subprocess
-	p = subprocess.Popen(f'date +%T -s {date}', shell=True, stdout=subprocess.PIPE)
+	p = subprocess.Popen(f'ls -l {folder}', shell=True, stdout=subprocess.PIPE)
 	res = p.stdout.read().decode('utf-8')
 	return res
 
-def memory_usage():
+def memory_usage(_):
 	def meminfo():
 		from collections import OrderedDict
 		meminfo=OrderedDict()
@@ -55,7 +61,7 @@ def memory_usage():
 	meminfo = meminfo()
 	return f'Total memory: {meminfo["MemTotal"]}\nFree memory: {meminfo["MemFree"]}'
 
-def running_processes():
+def running_processes(_):
 	def process_list():
 		import os
 		pids = []
