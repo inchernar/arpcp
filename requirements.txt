@@ -1,0 +1,6 @@
+Flask==1.1.2
+Jinja2==2.11.2
+PyYAML==5.3
+redis==3.4.1
+Werkzeug==1.0.1
+setproctitle==1.1.10
